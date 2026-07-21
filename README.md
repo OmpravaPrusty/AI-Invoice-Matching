@@ -1,32 +1,18 @@
 # AI Invoice Matching
 
-AI Invoice Matching is an enterprise-grade SaaS platform designed for finance teams to streamline invoice review and validation. The application will help users upload purchase orders (POs) and supplier invoices, extract structured data using OCR and OpenAI, compare both documents, detect discrepancies, generate AI summaries, and export comparison reports.
+AI Invoice Matching is an enterprise-grade SaaS platform designed to help finance teams automate invoice validation and reconciliation. The application will support upload of purchase orders and supplier invoices, extract structured data with OCR and AI, compare documents, detect discrepancies, generate summaries, and produce downloadable comparison reports.
 
 ## Project Objective
 
-Build a secure, scalable, and audit-friendly web application that reduces manual effort in invoice matching while improving accuracy and consistency across finance operations.
-
-## Version 1 Scope
-
+The initial version focuses on:
 - Purchase order and invoice upload
 - OCR and AI-based data extraction
 - AI document comparison
 - Discrepancy detection
 - Comparison history
 - PDF report generation
-- JWT-based authentication
+- JWT authentication
 - Dashboard experience
-
-## Future Scope
-
-The following capabilities are intentionally out of scope for Version 1:
-
-- GRN
-- Three-way matching
-- ERP integration
-- Approval workflow
-- Supplier portal
-- Email notifications
 
 ## Technology Stack
 
@@ -41,34 +27,41 @@ The following capabilities are intentionally out of scope for Version 1:
 
 ## Repository Structure
 
-- backend/ - API services and business logic foundation
-- frontend/ - React application foundation
-- docs/ - product and architecture documentation
+```text
+backend/     # API services, business logic, and database models
+frontend/    # React application and UI components
+docs/        # Project requirements, architecture notes, and design references
+```
 
-## Project Status
+## Project Principles
 
-The repository currently contains the initial project foundation only. No application business logic or UI implementation has been added yet.
+This repository is being established with a scalable and enterprise-ready foundation:
+- Clear separation between frontend and backend responsibilities
+- Maintainable folder structure for long-term growth
+- Security-first configuration and environment management
+- Documentation-driven development for collaboration
+- Standardized Git workflow for team delivery
 
-## Development Approach
+## Development Status
 
-This foundation is being established with enterprise-grade practices in mind:
-
-- Clear project structure
-- Secure configuration handling
-- Scalable folder organization
-- Professional documentation and licensing
-- Git-based collaboration workflow
+The current repository contains the initial project foundation only. Core application features and business logic will be added in subsequent iterations.
 
 ## Getting Started
 
 1. Clone the repository.
-2. Set up the frontend and backend environments separately.
-3. Configure required environment variables.
-4. Start the development servers for local development.
+2. Set up the backend environment and dependencies.
+3. Set up the frontend environment and dependencies.
+4. Configure environment variables for Supabase, OpenAI, and OCR services.
+5. Start the development servers for local testing.
 
-## Contribution Guidelines
+## Branching Strategy
 
-- Follow conventional commits for all changes.
-- Keep features modular and well-documented.
-- Prefer small, reviewable pull requests.
-- Ensure new work is backed by tests where applicable.
+The repository will follow a structured branching model:
+- main: production-ready code
+- develop: integration branch for upcoming releases
+- feature/*: new feature work
+- hotfix/*: urgent fixes for production issues
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
