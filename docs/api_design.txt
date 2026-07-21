@@ -1,0 +1,220 @@
+API Design Document
+AI Invoice Matching 
+
+1. Overview
+The application follows a RESTful API architecture.
+The frontend communicates with the FastAPI backend using JSON-based REST APIs. The backend handles authentication, document upload, OCR processing, AI extraction, comparison logic, database operations, and report generation.
+
+2. Authentication APIs
+Login
+POST
+/api/auth/login
+
+Request
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+
+Response
+{
+  "access_token": "...",
+  "token_type": "Bearer"
+}
+
+
+Get Current User
+GET
+/api/auth/me
+
+Returns logged-in user information.
+
+Logout
+POST
+/api/auth/logout
+
+Invalidates the current session/token (implementation dependent).
+
+3. Purchase Order APIs
+Upload Purchase Order
+POST
+/api/purchase-orders/upload
+
+Form Data
+PDF File
+
+Response
+{
+    "purchase_order_id":"uuid",
+    "status":"Uploaded"
+}
+
+
+Get All Purchase Orders
+GET
+/api/purchase-orders
+
+
+Get Purchase Order Details
+GET
+/api/purchase-orders/{id}
+
+
+Delete Purchase Order
+DELETE
+/api/purchase-orders/{id}
+
+
+4. Invoice APIs
+Upload Invoice
+POST
+/api/invoices/upload
+
+
+Get All Invoices
+GET
+/api/invoices
+
+
+Get Invoice Details
+GET
+/api/invoices/{id}
+
+
+Delete Invoice
+DELETE
+/api/invoices/{id}
+
+
+5. AI Processing APIs
+Extract Purchase Order
+POST
+/api/ai/extract-po
+
+Purpose
+OCR Processing
+OpenAI Extraction
+Save Structured Data
+
+Extract Invoice
+POST
+/api/ai/extract-invoice
+
+Purpose
+OCR Processing
+OpenAI Extraction
+Save Structured Data
+
+6. Comparison APIs
+Compare Documents
+POST
+/api/comparisons
+
+Request
+{
+    "purchase_order_id":"uuid",
+    "invoice_id":"uuid"
+}
+
+Response
+{
+    "comparison_id":"uuid",
+    "status":"Mismatch"
+}
+
+
+Get Comparison Result
+GET
+/api/comparisons/{id}
+
+Returns:
+AI Summary
+Matched Fields
+Mismatched Fields
+Comparison Issues
+
+Get Comparison History
+GET
+/api/comparisons
+
+
+7. Report APIs
+Generate Report
+GET
+/api/reports/{comparison_id}
+
+Returns downloadable PDF comparison report.
+
+8. Dashboard APIs
+Dashboard Statistics
+GET
+/api/dashboard
+
+Returns
+{
+    "purchase_orders":25,
+    "invoices":30,
+    "comparisons":22,
+    "matched":18,
+    "mismatched":4
+}
+
+
+9. Response Status Codes
+Code
+Meaning
+200
+Success
+201
+Resource Created
+400
+Invalid Request
+401
+Unauthorized
+403
+Forbidden
+404
+Resource Not Found
+422
+Validation Error
+500
+Internal Server Error
+
+
+10. Authentication
+Protected APIs require a JWT Bearer Token.
+Example:
+Authorization: Bearer <access_token>
+
+
+11. API Workflow
+User Login
+      │
+      ▼
+Receive JWT
+      │
+      ▼
+Upload Purchase Order
+      │
+      ▼
+Upload Invoice
+      │
+      ▼
+OCR Processing
+      │
+      ▼
+OpenAI Extraction
+      │
+      ▼
+Save Structured Data
+      │
+      ▼
+Compare Documents
+      │
+      ▼
+Store Comparison Result
+      │
+      ▼
+Generate Report
+
+

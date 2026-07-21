@@ -1,0 +1,133 @@
+AI Invoice Matching - Project Overview
+1. Introduction
+The AI-Powered Purchase Order & Invoice Matching System is a web-based application designed to automate the comparison of Purchase Orders (POs) and Supplier Invoices using Artificial Intelligence.
+The system extracts key information from uploaded documents, compares them intelligently, identifies discrepancies, and generates a comparison report. It helps small and medium-sized businesses reduce manual verification effort, minimize errors, and speed up invoice validation before payment approval.
+
+2. Objective
+Develop an AI-powered web application that enables users to upload Purchase Orders and Invoices, automatically extract document data, compare both documents, detect discrepancies, and generate an easy-to-understand comparison report.
+
+3. Key Features
+User Authentication
+Secure Login & Logout
+Role-Based Access (Admin, Finance User)
+Password Management
+Dashboard
+Total Purchase Orders
+Total Invoices
+Total Comparisons
+Matched Documents
+Mismatched Documents
+Recent Comparison History
+Purchase Order Management
+Upload Purchase Order (PDF/Image)
+View Uploaded Purchase Orders
+Search Purchase Orders
+Delete Purchase Orders
+Extract Purchase Order Details
+Invoice Management
+Upload Invoice (PDF/Image)
+View Uploaded Invoices
+Search Invoices
+Delete Invoices
+Extract Invoice Details
+AI Document Extraction
+OCR-Based Text Extraction
+AI-Powered Structured Data Extraction
+Automatic Field Identification
+JSON Data Generation
+AI Document Comparison
+Compare Vendor Information
+Compare Purchase Order Number
+Compare Product Names
+Compare Quantity
+Compare Unit Price
+Compare Tax
+Compare Total Amount
+Detect Missing or Extra Items
+Match / Partial Match / Mismatch Status
+AI Summary
+AI-Generated Comparison Summary
+List of Discrepancies
+Severity Level
+Manual Review Recommendation
+Comparison History
+Save Comparison Records
+Search Previous Comparisons
+View Comparison Details
+Reports
+Generate Comparison Report
+Download Report as PDF
+
+4. Technology Stack
+Frontend
+React.js with TypeScript
+Tailwind CSS
+React Router
+Axios
+React Hook Form
+TanStack Table
+Backend
+FastAPI (Python)
+SQLAlchemy ORM
+Pydantic
+JWT Authentication
+Database
+PostgreSQL
+AI & OCR
+OpenAI API
+Tesseract OCR (Development)
+
+
+Other Tools
+PDFKit (PDF Report Generation)
+REST APIs
+Docker (Deployment)
+Git & GitHub
+
+Define the user flow 
+Login
+
+↓
+
+Dashboard
+
+↓
+
+Upload Purchase Order
+
+↓
+
+Upload Invoice
+
+↓
+
+AI Processing
+
+↓
+
+Comparison Result
+
+↓
+
+History
+
+↓
+
+Download Report
+
+System architecture 
+
+                   React Frontend
+                         │
+                      Axios
+                         │
+                   FastAPI Backend
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+   Supabase DB     Supabase Storage   OpenAI API
+                         │
+                     Tesseract OCR
+
+
+

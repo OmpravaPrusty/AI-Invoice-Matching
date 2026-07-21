@@ -1,0 +1,257 @@
+UI Wireframe Document
+AI Invoice Matching 
+
+Design Principles
+The user interface should follow these principles:
+Clean and professional
+Enterprise dashboard design
+Minimal learning curve
+Responsive layout
+Consistent spacing and typography
+Accessible and intuitive navigation
+
+Application Structure
+Login
+   │
+   ▼
+Dashboard
+   │
+   ├── Purchase Orders
+   ├── Invoices
+   ├── Comparisons
+   └── Profile
+
+
+Screen 1 — Login
+Purpose
+Authenticate users before accessing the application.
+Components
+Company Logo
+Application Name
+Email Field
+Password Field
+Show/Hide Password
+Login Button
+Forgot Password Link
+
+Screen 2 — Dashboard
+Layout
+---------------------------------------------------------
+Sidebar          | Header
+                 |
+                 | Welcome User
+                 |
+                 |  Total POs
+                 |  Total Invoices
+                 |  Total Comparisons
+                 |  Matched
+                 |  Mismatched
+                 |
+                 | Recent Comparisons Table
+---------------------------------------------------------
+
+Components
+Sidebar
+Dashboard
+Purchase Orders
+Invoices
+Comparisons
+Profile
+Logout
+Dashboard Cards
+Total Purchase Orders
+Total Invoices
+Total Comparisons
+Matched
+Mismatched
+Recent Activity
+Recent Comparisons
+Latest Uploads
+
+Screen 3 — Purchase Orders
+Layout
+---------------------------------------------------------
+Purchase Orders
+
+[ Upload Purchase Order ]
+
+---------------------------------------------------------
+Search
+
+---------------------------------------------------------
+Purchase Order Table
+---------------------------------------------------------
+
+Components
+Upload Button
+Search Bar
+Data Table
+View Button
+Delete Button
+
+Screen 4 — Upload Purchase Order
+Components
+Drag & Drop Upload Area
+Browse File Button
+Supported File Types
+Upload Progress
+Upload Button
+Cancel Button
+
+Screen 5 — Purchase Order Details
+Sections
+Document Information
+PO Number
+Vendor
+Date
+Items Table
+Product
+Quantity
+Unit Price
+Total
+Document Preview
+Extracted Data
+
+Screen 6 — Invoices
+Structure identical to the Purchase Orders module.
+Components
+Upload Invoice
+Search
+Invoice Table
+View
+Delete
+
+Screen 7 — Upload Invoice
+Components
+Drag & Drop Upload Area
+Browse Button
+Upload Progress
+Supported Formats
+
+Screen 8 — Invoice Details
+Sections
+Invoice Information
+Items Table
+Document Preview
+Extracted Fields
+
+Screen 9 — Comparison Result
+Layout
+---------------------------------------------------------
+
+Purchase Order
+
+↓
+
+Invoice
+
+↓
+
+AI Comparison
+
+↓
+
+Status
+
+↓
+
+Issues
+
+↓
+
+AI Summary
+
+---------------------------------------------------------
+
+Components
+Comparison Status
+Match
+Partial Match
+Mismatch
+Comparison Summary
+Matched Fields
+Discrepancy Table
+| Field | PO | Invoice | Status |
+AI Recommendation
+Download Report Button
+
+Screen 10 — Comparison History
+Components
+Search
+Filters
+Comparison Table
+Columns
+Comparison ID
+Purchase Order
+Invoice
+Date
+Status
+Action
+Actions
+View
+Download Report
+
+Screen 11 — User Profile
+Components
+User Information
+Name
+Email
+Role
+Security
+Change Password
+Preferences
+Theme (Future)
+Notifications (Future)
+
+Navigation Flow
+Login
+   │
+   ▼
+Dashboard
+   │
+   ├──────────────┐
+   │              │
+Purchase Orders   Invoices
+   │              │
+   └──────┬───────┘
+          │
+          ▼
+   AI Comparison
+          │
+          ▼
+Comparison Result
+          │
+          ▼
+Comparison History
+          │
+          ▼
+Download Report
+
+
+UI Standards
+Typography
+Clear visual hierarchy
+Readable font sizes
+Consistent spacing
+Colors
+Neutral background
+Primary brand color
+Green for matched status
+Amber for partial match
+Red for mismatch
+Icons
+Simple outline icons
+Consistent iconography
+Tables
+Searchable
+Sortable
+Paginated
+Forms
+Inline validation
+Clear error messages
+Consistent input styles
+Responsive Design
+Desktop-first
+Tablet support
+Mobile-friendly layouts for essential workflows
+

@@ -1,0 +1,537 @@
+Database Design Document
+AI Invoice Matching 
+
+1. Overview
+The database is designed to store users, vendors, uploaded Purchase Orders, uploaded Invoices, extracted document data, AI comparison results, and discrepancy reports.
+The design follows normalization principles to avoid data duplication while remaining flexible for future enhancements such as Goods Receipt Notes (GRN), approval workflows, and ERP integration.
+
+2. Database
+Database: PostgreSQL (Supabase)
+
+3. Entity Relationship
+Users
+   │
+   ├──────────────┐
+   │              │
+Purchase Orders   Invoices
+   │              │
+   │              │
+Purchase Order Items
+   │
+Invoice Items
+   │
+Comparisons
+   │
+Comparison Issues
+
+
+4. Tables
+
+4.1 Users
+Stores application users.
+Column
+Type
+Description
+id
+UUID
+Primary Key
+full_name
+VARCHAR
+User Name
+email
+VARCHAR
+Unique Email
+password_hash
+TEXT
+Encrypted Password
+role
+VARCHAR
+admin / finance
+created_at
+TIMESTAMP
+Created Date
+updated_at
+TIMESTAMP
+Last Updated
+
+
+4.2 Vendors
+Stores supplier information.
+Column
+Type
+id
+UUID
+vendor_name
+VARCHAR
+email
+VARCHAR
+phone
+VARCHAR
+address
+TEXT
+created_at
+TIMESTAMP
+
+
+4.3 Purchase Orders
+Stores Purchase Order information.
+Column
+Type
+id
+UUID
+po_number
+VARCHAR
+vendor_id
+UUID (FK)
+po_date
+DATE
+subtotal
+DECIMAL
+tax
+DECIMAL
+total_amount
+DECIMAL
+pdf_url
+TEXT
+uploaded_by
+UUID
+created_at
+TIMESTAMP
+
+
+4.4 Purchase Order Items
+Stores individual items inside a Purchase Order.
+Column
+Type
+id
+UUID
+purchase_order_id
+UUID (FK)
+item_name
+VARCHAR
+quantity
+INTEGER
+unit_price
+DECIMAL
+total_price
+DECIMAL
+
+
+4.5 Invoices
+Stores invoice information.
+Column
+Type
+id
+UUID
+invoice_number
+VARCHAR
+vendor_id
+UUID (FK)
+invoice_date
+DATE
+subtotal
+DECIMAL
+tax
+DECIMAL
+total_amount
+DECIMAL
+pdf_url
+TEXT
+uploaded_by
+UUID
+created_at
+TIMESTAMP
+
+
+4.6 Invoice Items
+Stores invoice line items.
+Column
+Type
+id
+UUID
+invoice_id
+UUID (FK)
+item_name
+VARCHAR
+quantity
+INTEGER
+unit_price
+DECIMAL
+total_price
+DECIMAL
+
+
+4.7 Comparisons
+Stores every comparison performed by AI.
+Column
+Type
+id
+UUID
+purchase_order_id
+UUID
+invoice_id
+UUID
+comparison_status
+VARCHAR
+matched_fields
+INTEGER
+mismatched_fields
+INTEGER
+ai_summary
+TEXT
+compared_by
+UUID
+compared_at
+TIMESTAMP
+
+
+4.8 Comparison Issues
+Stores individual mismatches detected.
+Column
+Type
+id
+UUID
+comparison_id
+UUID
+field_name
+VARCHAR
+purchase_order_value
+TEXT
+invoice_value
+TEXT
+severity
+VARCHAR
+remarks
+TEXT
+
+
+5. Relationships
+Users
+One User
+
+↓
+
+Many Purchase Orders
+
+↓
+
+Many Invoices
+
+↓
+
+Many Comparisons
+
+Vendor
+One Vendor
+
+↓
+
+Many Purchase Orders
+
+↓
+
+Many Invoices
+
+Purchase Order
+One Purchase Order
+
+↓
+
+Many Purchase Order Items
+
+Invoice
+One Invoice
+
+↓
+
+Many Invoice Items
+
+Comparison
+One Comparison
+
+↓
+
+Many Comparison Issues
+
+
+6. Future Database Expansion
+The current schema is intentionally designed for future scalability.
+Future tables may include:
+goods_receipts
+goods_receipt_items
+approval_workflows
+audit_logs
+notifications
+organizations
+vendor_performance
+ai_processing_logs
+No major schema redesign will be required to support these enhancements.
+Database Design Document
+AI-Powered Purchase Order & Invoice Matching System
+
+1. Overview
+The database is designed to store users, vendors, uploaded Purchase Orders, uploaded Invoices, extracted document data, AI comparison results, and discrepancy reports.
+The design follows normalization principles to avoid data duplication while remaining flexible for future enhancements such as Goods Receipt Notes (GRN), approval workflows, and ERP integration.
+
+2. Database
+Database: PostgreSQL (Supabase)
+
+3. Entity Relationship
+Users
+   │
+   ├──────────────┐
+   │              │
+Purchase Orders   Invoices
+   │              │
+   │              │
+Purchase Order Items
+   │
+Invoice Items
+   │
+Comparisons
+   │
+Comparison Issues
+
+
+4. Tables
+
+4.1 Users
+Stores application users.
+Column
+Type
+Description
+id
+UUID
+Primary Key
+full_name
+VARCHAR
+User Name
+email
+VARCHAR
+Unique Email
+password_hash
+TEXT
+Encrypted Password
+role
+VARCHAR
+admin / finance
+created_at
+TIMESTAMP
+Created Date
+updated_at
+TIMESTAMP
+Last Updated
+
+
+4.2 Vendors
+Stores supplier information.
+Column
+Type
+id
+UUID
+vendor_name
+VARCHAR
+email
+VARCHAR
+phone
+VARCHAR
+address
+TEXT
+created_at
+TIMESTAMP
+
+
+4.3 Purchase Orders
+Stores Purchase Order information.
+Column
+Type
+id
+UUID
+po_number
+VARCHAR
+vendor_id
+UUID (FK)
+po_date
+DATE
+subtotal
+DECIMAL
+tax
+DECIMAL
+total_amount
+DECIMAL
+pdf_url
+TEXT
+uploaded_by
+UUID
+created_at
+TIMESTAMP
+
+
+4.4 Purchase Order Items
+Stores individual items inside a Purchase Order.
+Column
+Type
+id
+UUID
+purchase_order_id
+UUID (FK)
+item_name
+VARCHAR
+quantity
+INTEGER
+unit_price
+DECIMAL
+total_price
+DECIMAL
+
+
+4.5 Invoices
+Stores invoice information.
+Column
+Type
+id
+UUID
+invoice_number
+VARCHAR
+vendor_id
+UUID (FK)
+invoice_date
+DATE
+subtotal
+DECIMAL
+tax
+DECIMAL
+total_amount
+DECIMAL
+pdf_url
+TEXT
+uploaded_by
+UUID
+created_at
+TIMESTAMP
+
+
+4.6 Invoice Items
+Stores invoice line items.
+Column
+Type
+id
+UUID
+invoice_id
+UUID (FK)
+item_name
+VARCHAR
+quantity
+INTEGER
+unit_price
+DECIMAL
+total_price
+DECIMAL
+
+
+4.7 Comparisons
+Stores every comparison performed by AI.
+Column
+Type
+id
+UUID
+purchase_order_id
+UUID
+invoice_id
+UUID
+comparison_status
+VARCHAR
+matched_fields
+INTEGER
+mismatched_fields
+INTEGER
+ai_summary
+TEXT
+compared_by
+UUID
+compared_at
+TIMESTAMP
+
+
+4.8 Comparison Issues
+Stores individual mismatches detected.
+Column
+Type
+id
+UUID
+comparison_id
+UUID
+field_name
+VARCHAR
+purchase_order_value
+TEXT
+invoice_value
+TEXT
+severity
+VARCHAR
+remarks
+TEXT
+
+
+5. Relationships
+Users
+One User
+
+↓
+
+Many Purchase Orders
+
+↓
+
+Many Invoices
+
+↓
+
+Many Comparisons
+
+Vendor
+One Vendor
+
+↓
+
+Many Purchase Orders
+
+↓
+
+Many Invoices
+
+Purchase Order
+One Purchase Order
+
+↓
+
+Many Purchase Order Items
+
+Invoice
+One Invoice
+
+↓
+
+Many Invoice Items
+
+Comparison
+One Comparison
+
+↓
+
+Many Comparison Issues
+
+
+6. Future Database Expansion
+The current schema is intentionally designed for future scalability.
+Future tables may include:
+goods_receipts
+goods_receipt_items
+approval_workflows
+audit_logs
+notifications
+organizations
+vendor_performance
+ai_processing_logs
+No major schema redesign will be required to support these enhancements.
+
