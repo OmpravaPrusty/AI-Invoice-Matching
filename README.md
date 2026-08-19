@@ -5,6 +5,7 @@ AI Invoice Matching is an enterprise-grade SaaS platform designed to help financ
 ## Project Objective
 
 The initial version focuses on:
+
 - Purchase order and invoice upload
 - OCR and AI-based data extraction
 - AI document comparison
@@ -36,6 +37,7 @@ docs/        # Project requirements, architecture notes, and design references
 ## Project Principles
 
 This repository is being established with a scalable and enterprise-ready foundation:
+
 - Clear separation between frontend and backend responsibilities
 - Maintainable folder structure for long-term growth
 - Security-first configuration and environment management
@@ -54,13 +56,34 @@ The current repository contains the initial project foundation only. Core applic
 4. Configure environment variables for Supabase, OpenAI, and OCR services.
 5. Start the development servers for local testing.
 
+## OpenAI Connectivity Test
+
+The repository includes a minimal connectivity test at `backend/test_openai.py`.
+
+1. Copy `.env.example` to `.env` in the repository root.
+2. Set `OPENAI_API_KEY` in `.env` and keep the file local.
+3. Run the test from the repository root:
+
+```powershell
+.\backend\venv\Scripts\python.exe .\backend\test_openai.py
+```
+
+The expected successful output is:
+
+```text
+OpenAI connection works.
+```
+
+The test uses `OPENAI_MODEL` from `.env`, defaulting to `gpt-4o-mini`. Do not commit or share your API key.
+
 ## Branching Strategy
 
 The repository will follow a structured branching model:
+
 - main: production-ready code
 - develop: integration branch for upcoming releases
-- feature/*: new feature work
-- hotfix/*: urgent fixes for production issues
+- feature/\*: new feature work
+- hotfix/\*: urgent fixes for production issues
 
 ## License
 
