@@ -54,6 +54,8 @@ logs/
 *.db
 pgdata/
 supabase/.temp/
+backend/saved_docs/
+backend/uploaded_docs/
 
 # Temporary files
 tmp/
@@ -63,3 +65,4 @@ temp/
 *.zip
 *.tar
 *.gz
+*.pyc

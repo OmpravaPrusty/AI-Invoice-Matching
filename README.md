@@ -21,7 +21,7 @@ The initial version focuses on:
 - Backend: FastAPI, SQLAlchemy
 - Database: Supabase PostgreSQL
 - Storage: Supabase Storage
-- AI: OpenAI API
+- AI: Google Gemini API (`google-genai`)
 - OCR: Tesseract OCR
 - Authentication: JWT
 - Version Control: Git and GitHub
@@ -53,28 +53,28 @@ The current repository contains the initial project foundation only. Core applic
 1. Clone the repository.
 2. Set up the backend environment and dependencies.
 3. Set up the frontend environment and dependencies.
-4. Configure environment variables for Supabase, OpenAI, and OCR services.
+4. Configure environment variables for Supabase, Google Gemini, and OCR services.
 5. Start the development servers for local testing.
 
-## OpenAI Connectivity Test
+## Gemini Connectivity Test
 
-The repository includes a minimal connectivity test at `backend/test_openai.py`.
+The repository includes a minimal connectivity test at `backend/test_gemini.py`.
 
 1. Copy `.env.example` to `.env` in the repository root.
-2. Set `OPENAI_API_KEY` in `.env` and keep the file local.
+2. Set `GEMINI_API_KEY` in `.env` and keep the file local.
 3. Run the test from the repository root:
 
 ```powershell
-.\backend\venv\Scripts\python.exe .\backend\test_openai.py
+.\backend\venv\Scripts\python.exe .\backend\test_gemini.py
 ```
 
 The expected successful output is:
 
 ```text
-OpenAI connection works.
+Gemini is connected.
 ```
 
-The test uses `OPENAI_MODEL` from `.env`, defaulting to `gpt-4o-mini`. Do not commit or share your API key.
+The test uses `GEMINI_MODEL` from `.env`, defaulting to `gemini-3.6-flash`. Do not commit or share your API key.
 
 ## Branching Strategy
 

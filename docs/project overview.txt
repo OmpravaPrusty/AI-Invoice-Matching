@@ -74,7 +74,7 @@ JWT Authentication
 Database
 PostgreSQL
 AI & OCR
-OpenAI API
+Google Gemini API (`google-genai`)
 Tesseract OCR (Development)
 
 
@@ -125,7 +125,7 @@ System architecture
                          │
         ┌────────────────┼────────────────┐
         │                │                │
-   Supabase DB     Supabase Storage   OpenAI API
+      Supabase DB     Supabase Storage   Google Gemini API
                          │
                      Tesseract OCR
 
