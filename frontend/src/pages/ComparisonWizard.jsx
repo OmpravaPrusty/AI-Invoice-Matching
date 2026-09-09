@@ -320,9 +320,10 @@ export default function ComparisonWizard() {
       setError(
         caught?.response?.status === 401
           ? "Session expired. Please log in again."
-          : caught instanceof Error
-            ? caught.message
-            : "The AI comparison could not be completed.",
+          : caught?.response?.data?.detail ||
+              (caught instanceof Error
+                ? caught.message
+                : "The AI comparison could not be completed."),
       );
       setCurrentStep(2);
     } finally {
@@ -394,7 +395,6 @@ export default function ComparisonWizard() {
   const matchedRows = result.discrepancyMatrix.filter(
     (row) => row.status === "MATCH",
   );
-  const matchedHeaders = result.matchedHeaders;
   const isMismatchedCase = [
     "MISMATCH",
     "PARTIAL_MATCH",
@@ -609,9 +609,7 @@ export default function ComparisonWizard() {
           >
             <span className="flex items-center gap-2 font-semibold text-slate-800">
               <CheckCircle className="text-emerald-600" size={19} />
-              Similarity Matrix ({matchedHeaders.length ||
-                matchedRows.length}{" "}
-              items)
+              Similarity Matrix ({matchedRows.length} line items)
             </span>
             <span className="flex items-center gap-2 text-sm text-slate-500">
               {isSimilarityOpen ? "Hide Details" : "Show Details"}
@@ -624,38 +622,47 @@ export default function ComparisonWizard() {
           </button>
           {isSimilarityOpen && (
             <div className="overflow-x-auto border-t border-slate-200 p-4">
-              <table className="min-w-[620px] w-full text-left text-sm">
+              <table className="min-w-[980px] w-full text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="whitespace-nowrap px-4 py-3">
-                      Matched Field
+                      Item / Description
                     </th>
+                    <th className="whitespace-nowrap px-4 py-3">PO Qty</th>
+                    <th className="whitespace-nowrap px-4 py-3">Invoice Qty</th>
+                    <th className="whitespace-nowrap px-4 py-3">PO Rate</th>
                     <th className="whitespace-nowrap px-4 py-3">
-                      Purchase Order Value
+                      Invoice Rate
                     </th>
+                    <th className="whitespace-nowrap px-4 py-3">PO Total</th>
                     <th className="whitespace-nowrap px-4 py-3">
-                      Invoice Value
+                      Invoice Total
                     </th>
-                    <th className="whitespace-nowrap px-4 py-3">Confidence</th>
+                    <th className="whitespace-nowrap px-4 py-3">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {(matchedHeaders.length > 0
-                    ? matchedHeaders
-                    : matchedRows
-                  ).map((row, index) => (
+                  {matchedRows.map((row, index) => (
                     <tr key={`${row.field}-${index}`}>
                       <td className="px-4 py-3 font-semibold text-slate-800">
-                        {row.field}
+                        {row.itemName}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">{row.poQty}</td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {row.invoiceQty}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">{row.poRate}</td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {row.invoiceRate}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
-                        {row.poValue}
+                        {row.poTotal}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
-                        {row.invoiceValue}
+                        {row.invoiceTotal}
                       </td>
-                      <td className="px-4 py-3 text-emerald-700">
-                        {row.confidence || "MATCH"}
+                      <td className="px-4 py-3 font-semibold text-emerald-700">
+                        VERIFIED
                       </td>
                     </tr>
                   ))}

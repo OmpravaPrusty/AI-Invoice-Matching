@@ -5,9 +5,6 @@ import {
   FileText,
   Receipt,
   GitCompare,
-  Settings,
-  User,
-  LogOut,
   Search,
   Bell,
   ChevronDown,
@@ -51,11 +48,6 @@ export default function MainLayout({
     { icon: GitCompare, label: "Comparisons", path: "/comparisons" },
   ];
 
-  const utilityItems = [
-    { icon: Settings, label: "Settings", path: "/settings" },
-    { icon: User, label: "Profile", path: "/profile" },
-  ];
-
   const handleNavigation = (path) => {
     navigate(path);
     setSidebarOpen(false);
@@ -91,7 +83,6 @@ export default function MainLayout({
           </button>
         </div>
 
-        {/* Navigation Items */}
         <nav className="flex-1 p-4 space-y-2">
           {navItems.map((item) => (
             <button
@@ -104,29 +95,6 @@ export default function MainLayout({
             </button>
           ))}
         </nav>
-
-        {/* Utility Items */}
-        <div className="border-t border-slate-800 p-4 space-y-2">
-          {utilityItems.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => handleNavigation(item.path)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left text-slate-300 hover:text-white"
-            >
-              <item.icon size={20} className="flex-shrink-0" />
-              <span className="font-medium">{item.label}</span>
-            </button>
-          ))}
-
-          {/* Logout Button */}
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-rose-900 transition-colors text-left text-rose-300 hover:text-rose-100"
-          >
-            <LogOut size={20} className="flex-shrink-0" />
-            <span className="font-medium">Logout</span>
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -216,12 +184,6 @@ export default function MainLayout({
                   <div className="px-4 py-2 border-b border-slate-200 text-sm text-slate-600">
                     {user?.email || "omprava@example.com"}
                   </div>
-                  <button className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 text-slate-700">
-                    Profile Settings
-                  </button>
-                  <button className="w-full px-4 py-2 text-left text-sm hover:bg-slate-100 text-slate-700">
-                    Account
-                  </button>
                   <button
                     onClick={handleLogout}
                     className="w-full px-4 py-2 text-left text-sm hover:bg-rose-50 text-rose-600"

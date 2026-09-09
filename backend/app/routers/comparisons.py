@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import get_current_user
 from app.database import get_db
-from app.models.comparison import Comparison, ComparisonRecord, ComparisonStatus
+from app.models.comparison import Comparison, ComparisonStatus
 from app.models.invoice import Invoice
 from app.models.purchase_order import PurchaseOrder
 
@@ -54,13 +54,20 @@ async def save_comparison(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Persist a previously computed direct comparison atomically."""
+    po_path: Path | None = None
+    invoice_path: Path | None = None
     try:
         payload = json.loads(comparison_result)
         if not isinstance(payload, dict):
             raise ValueError("comparison_result must be a JSON object.")
-        source_status = payload.get("match_status")
+        summary = payload.get("summary") if isinstance(payload.get("summary"), dict) else {}
+        source_status = str(
+            payload.get("match_status")
+            or summary.get("overall_status", "")
+        ).upper()
         match_status = {
             "MATCH": "EXACT_MATCH",
+            "MATCHED": "EXACT_MATCH",
             "EXACT_MATCH": "EXACT_MATCH",
             "PARTIAL_MATCH": "PARTIAL_MATCH",
             "MISMATCH": "DISCREPANCY_FOUND",
@@ -87,8 +94,12 @@ async def save_comparison(
             db.add(po)
         po.file_path = str(po_path)
         po.file_hash = po_hash
-        po.vendor = payload.get("po_extracted", {}).get("vendor")
-        po.extracted_data = payload.get("po_extracted", {})
+        po_extracted = payload.get("po_extracted") if isinstance(payload.get("po_extracted"), dict) else {}
+        invoice_extracted = payload.get("invoice_extracted") if isinstance(payload.get("invoice_extracted"), dict) else {}
+        po.vendor = po_extracted.get("vendor") or summary.get("vendor_name")
+        po.po_number = po_extracted.get("po_number") or summary.get("po_number")
+        po.total_amount = po_extracted.get("total_amount") or summary.get("po_total")
+        po.extracted_data = po_extracted or summary
 
         invoice = db.query(Invoice).filter(Invoice.user_id == user_id, Invoice.file_hash == invoice_hash).first()
         if invoice is None:
@@ -96,8 +107,10 @@ async def save_comparison(
             db.add(invoice)
         invoice.file_path = str(invoice_path)
         invoice.file_hash = invoice_hash
-        invoice.vendor = payload.get("invoice_extracted", {}).get("vendor")
-        invoice.extracted_data = payload.get("invoice_extracted", {})
+        invoice.vendor = invoice_extracted.get("vendor") or summary.get("vendor_name")
+        invoice.invoice_number = invoice_extracted.get("invoice_number") or summary.get("invoice_number")
+        invoice.total_amount = invoice_extracted.get("total_amount") or summary.get("invoice_total")
+        invoice.extracted_data = invoice_extracted or summary
         db.flush()
         previous_runs = db.query(Comparison).filter(Comparison.user_id == user_id, Comparison.purchase_order_id == po.id, Comparison.invoice_id == invoice.id).count()
         status_value = {
@@ -105,15 +118,21 @@ async def save_comparison(
             "PARTIAL_MATCH": ComparisonStatus.PARTIAL_MATCH,
             "DISCREPANCY_FOUND": ComparisonStatus.MISMATCH,
         }[match_status]
+        rows = payload.get("discrepancies")
+        if not isinstance(rows, list):
+            rows = payload.get("line_items", [])
+        if not isinstance(rows, list):
+            rows = []
+        summary_text = payload.get("summary") if isinstance(payload.get("summary"), str) else summary.get("overall_status", "")
         result = Comparison(
             user_id=user_id,
             purchase_order_id=po.id,
             invoice_id=invoice.id,
             run_number=previous_runs + 1,
             status=status_value,
-            ai_summary=payload.get("summary", ""),
-            matched_fields=json.dumps([row for row in payload.get("discrepancies", []) if row.get("status") == "MATCH"]),
-            mismatched_fields=json.dumps([row for row in payload.get("discrepancies", []) if row.get("status") == "DISCREPANCY"]),
+            ai_summary=summary_text,
+            matched_fields=json.dumps([row for row in rows if isinstance(row, dict) and row.get("status") == "MATCH"]),
+            mismatched_fields=json.dumps([row for row in rows if isinstance(row, dict) and row.get("status") == "DISCREPANCY"]),
             discrepancy_details=json.dumps(payload),
         )
         db.add(result)
@@ -123,13 +142,17 @@ async def save_comparison(
         return {"comparison_id": str(result.id), "po_id": str(po.id), "invoice_id": str(invoice.id), "run_number": result.run_number, "status": result.status.value}
     except ValueError as exc:
         db.rollback()
-        po_path.unlink(missing_ok=True)
-        invoice_path.unlink(missing_ok=True)
+        if po_path:
+            po_path.unlink(missing_ok=True)
+        if invoice_path:
+            invoice_path.unlink(missing_ok=True)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
         db.rollback()
-        po_path.unlink(missing_ok=True)
-        invoice_path.unlink(missing_ok=True)
+        if po_path:
+            po_path.unlink(missing_ok=True)
+        if invoice_path:
+            invoice_path.unlink(missing_ok=True)
         raise HTTPException(status_code=500, detail=f"Comparison save failed [{type(exc).__name__}]: {exc}") from exc
 
 

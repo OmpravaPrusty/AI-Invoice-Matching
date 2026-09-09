@@ -7,6 +7,7 @@ import json
 import os
 import tempfile
 import time
+import re
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -20,15 +21,16 @@ from google.genai.errors import APIError
 DEFAULT_MODEL = "gemini-3.6-flash"
 MAX_RETRIES = 3
 FILE_POLL_INTERVAL_SECONDS = 2
+PO_NUMBER_PATTERN = re.compile(r"\b(?:PO|P\.O\.?)[\s#:/-]*[A-Z0-9][A-Z0-9./-]*\b", re.IGNORECASE)
 COMPARISON_RESPONSE_SCHEMA: dict[str, Any] = {
     "type": "OBJECT",
     "properties": {
         "summary": {"type": "OBJECT", "properties": {
             "po_number": {"type": "STRING"}, "invoice_number": {"type": "STRING"},
             "vendor_name": {"type": "STRING"}, "po_total": {"type": "NUMBER"},
-            "invoice_total": {"type": "NUMBER"},
+            "invoice_total": {"type": "NUMBER"}, "invoice_po_number": {"type": "STRING"},
             "overall_status": {"type": "STRING", "enum": ["MATCHED", "PARTIAL_MATCH", "DISCREPANCY_FOUND"]},
-        }, "required": ["po_number", "invoice_number", "vendor_name", "po_total", "invoice_total", "overall_status"]},
+        }, "required": ["po_number", "invoice_number", "vendor_name", "po_total", "invoice_total", "invoice_po_number", "overall_status"]},
         "line_items": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {
             "item_name": {"type": "STRING"}, "po_qty": {"type": "NUMBER"}, "inv_qty": {"type": "NUMBER"},
             "po_rate": {"type": "NUMBER"}, "inv_rate": {"type": "NUMBER"},
@@ -49,6 +51,43 @@ def _file_state_name(file_ref: Any) -> str:
     """Normalize enum and string file states returned by SDK versions."""
     state = getattr(file_ref, "state", None)
     return str(getattr(state, "name", state or "UNKNOWN")).upper()
+
+
+def _normalise_reference(value: Any) -> str:
+    return re.sub(r"[^A-Z0-9]", "", str(value or "").upper())
+
+
+def _validate_comparison_result(result: dict[str, Any]) -> dict[str, Any]:
+    summary = result.get("summary")
+    line_items = result.get("line_items")
+    headers = result.get("matched_headers")
+    if not isinstance(summary, dict) or not isinstance(line_items, list) or not isinstance(headers, list):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Gemini returned an incomplete comparison.")
+
+    po_number = str(summary.get("po_number") or "").strip()
+    if not po_number or not PO_NUMBER_PATTERN.search(po_number) or not line_items:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Please enter Valid po")
+
+    for item in line_items:
+        item_name = str(item.get("item_name") or "").strip() if isinstance(item, dict) else ""
+        if not item_name or re.fullmatch(r"item\s*\d+(?:\s+.*)?", item_name, re.IGNORECASE):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Please enter Valid po")
+
+    po_reference = _normalise_reference(po_number)
+    invoice_po_number = str(summary.get("invoice_po_number") or "").strip()
+    for header in headers:
+        if not isinstance(header, dict):
+            continue
+        field_name = str(header.get("field") or "").lower()
+        if "po" in field_name and ("number" in field_name or "reference" in field_name):
+            invoice_po_number = invoice_po_number or str(header.get("invoice_value") or "").strip()
+            break
+    if not invoice_po_number or _normalise_reference(invoice_po_number) != po_reference:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invoice PO number does not match the selected Purchase Order.",
+        )
+    return result
 
 
 def wait_for_files_active(
@@ -131,12 +170,12 @@ def run_gemini_matching(po_path: str, invoice_path: str) -> str:
         prompt = (
             "You are an expert AI Purchase Order and Invoice Auditor. Analyze both attached PDF documents in full detail. "
             "Return only JSON with summary, line_items, and matched_headers. summary must contain po_number, invoice_number, "
-            "vendor_name, po_total, invoice_total, and overall_status (MATCHED, PARTIAL_MATCH, or DISCREPANCY_FOUND). "
+            "vendor_name, po_total, invoice_total, invoice_po_number, and overall_status (MATCHED, PARTIAL_MATCH, or DISCREPANCY_FOUND). "
             "line_items must contain every compared line item, including matching and mismatching items. Each line item must "
             "use the exact product or service description printed in the PDFs as item_name. Never use generic placeholders "
             "such as Item 1, Item 2, Item 1 Quantity, or Item 1 Total Amount. Include po_qty, inv_qty, po_rate, inv_rate, "
             "po_total, inv_total, status (MATCH or DISCREPANCY), and variance_reason. matched_headers must contain each "
-            "matched document-level field with field, po_value, invoice_value, and match_confidence. Use 0 for missing "
+            "matched document-level field with field, po_value, invoice_value, and match_confidence. Set invoice_po_number to the PO number printed on the invoice, even when it differs. Use 0 for missing "
             "numeric values and explain every mismatch in variance_reason."
         )
 
@@ -206,7 +245,8 @@ def compare_document_bytes(
         with open(invoice_path, "wb") as invoice_stream:
             invoice_stream.write(invoice_bytes)
         try:
-            return json.loads(run_gemini_matching(po_path, invoice_path))
+            result = json.loads(run_gemini_matching(po_path, invoice_path))
+            return _validate_comparison_result(result)
         except json.JSONDecodeError as exc:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,

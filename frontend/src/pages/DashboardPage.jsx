@@ -1,7 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, MoreVertical, AlertCircle, TrendingUp } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
+import api from "../services/api.ts";
 
 /**
  * Dashboard Page - Main application dashboard with KPI metrics and activity table
@@ -18,118 +19,111 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [overview, setOverview] = useState({
+    metrics: {
+      total_purchase_orders: 0,
+      total_invoices: 0,
+      total_comparisons: 0,
+      matched_rate_percentage: 0,
+      discrepancies_count: 0,
+      po_growth_percentage: 0,
+      invoice_growth_percentage: 0,
+    },
+    recent_runs: [],
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  // Mock data for KPI metrics
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+    setLoadError("");
+    api
+      .get("/api/dashboard/overview", { params: { status: statusFilter } })
+      .then(({ data }) => {
+        if (active) setOverview(data);
+      })
+      .catch((error) => {
+        if (active) {
+          setLoadError(
+            error.response?.data?.detail || "Could not load dashboard data.",
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [statusFilter]);
+
+  const metrics = overview.metrics;
   const kpiMetrics = [
     {
       id: "total-pos",
       label: "Total Purchase Orders",
-      value: 2847,
+      value: metrics.total_purchase_orders,
       icon: "📋",
-      trend: "+12.5%",
-      trendPositive: true,
+      trend: metrics.po_growth_percentage,
+      trendPositive: metrics.po_growth_percentage >= 0,
     },
     {
       id: "total-invoices",
       label: "Total Invoices",
-      value: 3156,
+      value: metrics.total_invoices,
       icon: "🧾",
-      trend: "+8.2%",
-      trendPositive: true,
+      trend: metrics.invoice_growth_percentage,
+      trendPositive: metrics.invoice_growth_percentage >= 0,
     },
     {
       id: "total-comparisons",
       label: "Total Comparisons",
-      value: 4203,
+      value: metrics.total_comparisons,
       icon: "🔄",
-      trend: "+15.1%",
+      trend: null,
       trendPositive: true,
     },
     {
       id: "match-rate",
       label: "Matched Rate",
-      value: "94.2%",
+      value: `${metrics.matched_rate_percentage}%`,
       icon: "✓",
-      trend: "+2.3%",
+      trend: null,
       trendPositive: true,
       badge: "success",
     },
     {
       id: "discrepancies",
       label: "Discrepancies",
-      value: 245,
+      value: metrics.discrepancies_count,
       icon: "⚠️",
-      trend: "+5.8%",
+      trend: null,
       trendPositive: false,
       badge: "warning",
     },
   ];
 
-  // Mock data for comparison runs
-  const mockData = [
-    {
-      id: "RUN-2024-001",
-      poReference: "PO-892374",
-      invoiceReference: "INV-201024-567",
-      vendorName: "Acme Corporation",
-      matchRate: 100,
-      status: "matched",
-    },
-    {
-      id: "RUN-2024-002",
-      poReference: "PO-892375",
-      invoiceReference: "INV-201024-568",
-      vendorName: "TechVendor Inc",
-      matchRate: 87,
-      status: "partial",
-    },
-    {
-      id: "RUN-2024-003",
-      poReference: "PO-892376",
-      invoiceReference: "INV-201024-569",
-      vendorName: "Global Supply Co",
-      matchRate: 65,
-      status: "mismatch",
-    },
-    {
-      id: "RUN-2024-004",
-      poReference: "PO-892377",
-      invoiceReference: "INV-201024-570",
-      vendorName: "Enterprise Solutions LLC",
-      matchRate: 95,
-      status: "matched",
-    },
-    {
-      id: "RUN-2024-005",
-      poReference: "PO-892378",
-      invoiceReference: "INV-201024-571",
-      vendorName: "Direct Trading Partners",
-      matchRate: 72,
-      status: "partial",
-    },
-  ];
-
-  // Filter and search logic
   const filteredData = useMemo(() => {
-    return mockData.filter((item) => {
+    return overview.recent_runs.filter((item) => {
       const matchesSearch =
-        item.poReference.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.invoiceReference
+        item.po_reference.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.invoice_reference
           .toLowerCase()
           .includes(searchTerm.toLowerCase()) ||
-        item.vendorName.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesStatus =
-        statusFilter === "all" || item.status === statusFilter;
-
-      return matchesSearch && matchesStatus;
+        item.vendor_name.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesSearch;
     });
-  }, [searchTerm, statusFilter]);
+  }, [overview.recent_runs, searchTerm]);
 
   /**
    * Get status badge styling based on match rate
    */
   const getStatusBadge = (status) => {
+    const normalizedStatus = String(status || "")
+      .toLowerCase()
+      .replace("partial match", "partial")
+      .replace("discrepancy_found", "mismatch");
     const badges = {
       matched: {
         bg: "bg-emerald-50",
@@ -150,7 +144,7 @@ export default function DashboardPage() {
         label: "Mismatch",
       },
     };
-    return badges[status] || badges.mismatch;
+    return badges[normalizedStatus] || badges.mismatch;
   };
 
   /**
@@ -191,13 +185,18 @@ export default function DashboardPage() {
                 <h3 className="text-3xl font-bold text-slate-900 mb-2">
                   {metric.value}
                 </h3>
-                <p
-                  className={`text-sm font-medium ${
-                    metric.trendPositive ? "text-emerald-600" : "text-rose-600"
-                  }`}
-                >
-                  {metric.trend} from last month
-                </p>
+                {metric.trend !== null && (
+                  <p
+                    className={`text-sm font-medium ${
+                      metric.trendPositive
+                        ? "text-emerald-600"
+                        : "text-rose-600"
+                    }`}
+                  >
+                    {metric.trend >= 0 ? "+" : ""}
+                    {metric.trend}% from last month
+                  </p>
+                )}
               </div>
               <div className="text-3xl">{metric.icon}</div>
             </div>
@@ -271,6 +270,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {loadError && (
+          <div className="border-b border-rose-200 bg-rose-50 px-6 py-3 text-sm text-rose-700">
+            {loadError}
+          </div>
+        )}
+
         {/* Data Table */}
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -300,44 +305,53 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredData.length > 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td
+                    colSpan="7"
+                    className="px-6 py-8 text-center text-slate-500"
+                  >
+                    Loading comparison runs...
+                  </td>
+                </tr>
+              ) : filteredData.length > 0 ? (
                 filteredData.map((row) => {
                   const badge = getStatusBadge(row.status);
                   return (
                     <tr
-                      key={row.id}
+                      key={row.run_id}
                       className="border-b border-slate-200 hover:bg-slate-50 transition-colors"
                     >
                       <td className="px-6 py-4 text-sm font-mono text-slate-900">
-                        {row.id}
+                        {row.run_id}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-700">
-                        {row.poReference}
+                        {row.po_reference}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-700">
-                        {row.invoiceReference}
+                        {row.invoice_reference}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-900 font-medium">
-                        {row.vendorName}
+                        {row.vendor_name}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <div className="w-12 h-2 bg-slate-200 rounded-full overflow-hidden">
                             <div
                               className={`h-full ${
-                                row.matchRate === 100
+                                row.match_rate === 100
                                   ? "bg-emerald-500"
-                                  : row.matchRate >= 70
+                                  : row.match_rate >= 70
                                     ? "bg-amber-500"
                                     : "bg-rose-500"
                               }`}
                               style={{
-                                width: `${row.matchRate}%`,
+                                width: `${row.match_rate}%`,
                               }}
                             />
                           </div>
                           <span className="text-sm font-semibold text-slate-900">
-                            {row.matchRate}%
+                            {row.match_rate}%
                           </span>
                         </div>
                       </td>
@@ -380,7 +394,9 @@ export default function DashboardPage() {
         <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between text-sm text-slate-600">
           <p>
             Showing <span className="font-medium">{filteredData.length}</span>{" "}
-            of <span className="font-medium">{mockData.length}</span> runs
+            of{" "}
+            <span className="font-medium">{overview.recent_runs.length}</span>{" "}
+            recent runs
           </p>
           <div className="flex gap-2">
             <button className="px-3 py-1 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
