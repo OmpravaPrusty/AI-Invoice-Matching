@@ -6,7 +6,12 @@ import PasswordInput from "../components/ui/PasswordInput";
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { register } = useAuth();
-  const [form, setForm] = useState({ full_name: "", email: "", password: "" });
+  const [form, setForm] = useState({
+    full_name: "",
+    email: "",
+    password: "",
+    role: "user",
+  });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,7 +28,7 @@ export default function RegisterPage() {
     setSuccess("");
 
     try {
-      await register(form.full_name, form.email, form.password);
+      await register(form.full_name, form.email, form.password, form.role);
       setSuccess("Registration Confirmed");
       setTimeout(() => navigate("/login"), 500);
     } catch (err) {
@@ -101,6 +106,25 @@ export default function RegisterPage() {
               placeholder="Minimum 8 characters"
               required
             />
+
+            <div>
+              <label
+                htmlFor="role"
+                className="block text-sm font-medium text-slate-700 mb-2"
+              >
+                Role
+              </label>
+              <select
+                id="role"
+                name="role"
+                value={form.role}
+                onChange={handleChange}
+                className="input-base w-full"
+              >
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
 
             {/* Error Message */}
             {error && (

@@ -15,6 +15,16 @@ function ProtectedRoute({ children }) {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 }
 
+function AdminRoute({ children }) {
+  const { user } = useAuth();
+
+  return user?.role === "admin" ? (
+    children
+  ) : (
+    <Navigate to="/dashboard" replace />
+  );
+}
+
 function PublicRoute({ children }) {
   const { isAuthenticated } = useAuth();
 
@@ -52,7 +62,9 @@ function App() {
         path="/purchase-orders"
         element={
           <ProtectedRoute>
-            <PurchaseOrders />
+            <AdminRoute>
+              <PurchaseOrders />
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -60,7 +72,9 @@ function App() {
         path="/purchase-orders/upload"
         element={
           <ProtectedRoute>
-            <UploadPO />
+            <AdminRoute>
+              <UploadPO />
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -68,7 +82,9 @@ function App() {
         path="/purchase-orders/:id"
         element={
           <ProtectedRoute>
-            <PODetails />
+            <AdminRoute>
+              <PODetails />
+            </AdminRoute>
           </ProtectedRoute>
         }
       />

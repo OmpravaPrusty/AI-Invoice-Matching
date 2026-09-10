@@ -4,12 +4,16 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 from uuid import uuid4
 
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_admin
 from app.database import get_db
 from app.models.purchase_order import PurchaseOrder
 from app.services.supabase_storage import SupabaseStorage
 
-router = APIRouter(prefix="/api/purchase-orders", tags=["purchase_orders"])
+router = APIRouter(
+    prefix="/api/purchase-orders",
+    tags=["purchase_orders"],
+    dependencies=[Depends(require_admin)],
+)
 
 
 @router.post("/upload")

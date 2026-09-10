@@ -41,12 +41,18 @@ export default function MainLayout({
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const navItems = [
+  const baseNavItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    { icon: FileText, label: "Purchase Orders", path: "/purchase-orders" },
-    { icon: Receipt, label: "Invoices", path: "/invoices" },
     { icon: GitCompare, label: "Comparisons", path: "/comparisons" },
   ];
+  const adminNavItems = [
+    { icon: FileText, label: "Purchase Orders", path: "/purchase-orders" },
+    { icon: Receipt, label: "Invoices", path: "/invoices" },
+  ];
+  const navItems =
+    user?.role === "admin"
+      ? [baseNavItems[0], ...adminNavItems, baseNavItems[1]]
+      : baseNavItems;
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -168,10 +174,10 @@ export default function MainLayout({
                 aria-label="User menu"
               >
                 <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                  {user?.email?.[0]?.toUpperCase() || "O"}
+                  {(user?.full_name || user?.email || "O")[0].toUpperCase()}
                 </div>
                 <span className="hidden md:inline text-sm font-medium text-slate-700">
-                  {user?.email?.split("@")[0] || "Omprava"}
+                  {user?.full_name || user?.email?.split("@")[0] || "Omprava"}
                 </span>
                 <ChevronDown
                   size={16}

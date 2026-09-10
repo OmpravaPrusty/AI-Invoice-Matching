@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta
 from typing import Any
-from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
@@ -134,13 +133,11 @@ async def get_dashboard_overview(
     current_user: dict[str, Any] = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> DashboardOverview:
-    user_id = UUID(str(current_user["user_id"]))
     now, current_start, previous_start = _month_window()
 
-    po_query = db.query(func.count(func.distinct(PurchaseOrder.id))).filter(PurchaseOrder.user_id == user_id)
-    invoice_query = db.query(func.count(func.distinct(Invoice.id))).filter(Invoice.user_id == user_id)
+    po_query = db.query(func.count(func.distinct(PurchaseOrder.id)))
+    invoice_query = db.query(func.count(func.distinct(Invoice.id)))
     comparison_query = db.query(Comparison).filter(
-        Comparison.user_id == user_id,
         Comparison.status != ComparisonStatus.PENDING,
     )
     total_purchase_orders = int(po_query.scalar() or 0)

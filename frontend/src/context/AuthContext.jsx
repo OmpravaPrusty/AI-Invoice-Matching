@@ -1,45 +1,50 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import api from '../api/client';
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import api from "../api/client";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem('token') || '');
+  const [token, setToken] = useState(() => localStorage.getItem("token") || "");
   const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = localStorage.getItem("user");
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
   useEffect(() => {
     if (token) {
-      localStorage.setItem('token', token);
+      localStorage.setItem("token", token);
     } else {
-      localStorage.removeItem('token');
+      localStorage.removeItem("token");
     }
   }, [token]);
 
   useEffect(() => {
     if (user) {
-      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem("user", JSON.stringify(user));
     } else {
-      localStorage.removeItem('user');
+      localStorage.removeItem("user");
     }
   }, [user]);
 
   const login = async (email, password) => {
-    const { data } = await api.post('/api/auth/login', { email, password });
+    const { data } = await api.post("/api/auth/login", { email, password });
     setToken(data.access_token);
-    setUser({ email });
+    setUser(data.user || { email, role: data.role || "user" });
     return data;
   };
 
-  const register = async (full_name, email, password) => {
-    const { data } = await api.post('/api/auth/register', { full_name, email, password });
+  const register = async (full_name, email, password, role = "user") => {
+    const { data } = await api.post("/api/auth/register", {
+      full_name,
+      email,
+      password,
+      role,
+    });
     return data;
   };
 
   const logout = () => {
-    setToken('');
+    setToken("");
     setUser(null);
   };
 
@@ -62,7 +67,7 @@ export function useAuth() {
   const context = useContext(AuthContext);
 
   if (!context) {
-    throw new Error('useAuth must be used inside AuthProvider');
+    throw new Error("useAuth must be used inside AuthProvider");
   }
 
   return context;

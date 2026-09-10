@@ -75,6 +75,7 @@ async def get_current_user(
             "user_id": str(user.id),
             "email": user.email,
             "full_name": user.full_name,
+            "role": user.role if user.role in {"admin", "user"} else "user",
         }
     except (JWTError, ValueError, TypeError):
         raise HTTPException(
@@ -108,3 +109,14 @@ async def get_current_user_claims(
             detail="Invalid token",
             headers={"WWW-Authenticate": "Bearer"},
         ) from exc
+
+
+async def require_admin(
+    current_user: dict = Depends(get_current_user),
+) -> dict:
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrator access required.",
+        )
+    return current_user

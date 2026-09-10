@@ -159,10 +159,10 @@ async def save_comparison(
 @router.post("")
 async def create_comparison(request: ComparisonRequest, current_user: dict[str, Any] = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     try:
-        po_id, invoice_id, user_id = UUID(request.purchase_order_id), UUID(request.invoice_id), UUID(str(current_user["user_id"]))
+        po_id, invoice_id = UUID(request.purchase_order_id), UUID(request.invoice_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid document identifier.") from exc
-    record = (db.query(Comparison).filter(Comparison.user_id == user_id, Comparison.purchase_order_id == po_id, Comparison.invoice_id == invoice_id).order_by(Comparison.created_at.desc()).first())
+    record = (db.query(Comparison).filter(Comparison.purchase_order_id == po_id, Comparison.invoice_id == invoice_id).order_by(Comparison.created_at.desc()).first())
     if record is None:
         raise HTTPException(status_code=404, detail="No comparison exists for these documents. Use the matching upload endpoint.")
     return _record_response(record, db)
@@ -171,10 +171,10 @@ async def create_comparison(request: ComparisonRequest, current_user: dict[str, 
 @router.get("/{comparison_id}")
 async def get_comparison(comparison_id: str, current_user: dict[str, Any] = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
     try:
-        record_id, user_id = UUID(comparison_id), UUID(str(current_user["user_id"]))
+        record_id = UUID(comparison_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="Invalid comparison identifier.") from exc
-    record = db.query(Comparison).filter(Comparison.id == record_id, Comparison.user_id == user_id).first()
+    record = db.query(Comparison).filter(Comparison.id == record_id).first()
     if record is None:
         raise HTTPException(status_code=404, detail="Comparison not found.")
     return _record_response(record, db)
@@ -182,6 +182,5 @@ async def get_comparison(comparison_id: str, current_user: dict[str, Any] = Depe
 
 @router.get("")
 async def get_comparison_history(current_user: dict[str, Any] = Depends(get_current_user), db: Session = Depends(get_db)) -> dict[str, Any]:
-    user_id = UUID(str(current_user["user_id"]))
-    records = db.query(Comparison).filter(Comparison.user_id == user_id).order_by(Comparison.created_at.desc()).all()
+    records = db.query(Comparison).order_by(Comparison.created_at.desc()).all()
     return {"comparisons": [_record_response(record, db) for record in records]}

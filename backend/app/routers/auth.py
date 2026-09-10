@@ -46,6 +46,7 @@ async def register_user(
             full_name=request.full_name.strip(),
             password_hash=hash_password(password),
             is_active=True,
+            role=request.role,
         )
         db.add(user)
         db.commit()
@@ -82,8 +83,19 @@ async def login_user(
                 detail="Invalid credentials",
             )
 
-        token = create_access_token({"sub": str(user.id)})
-        return LoginResponse(access_token=token, token_type="bearer")
+        role = user.role if user.role in {"admin", "user"} else "user"
+        token = create_access_token({"sub": str(user.id), "role": role})
+        return LoginResponse(
+            access_token=token,
+            token_type="bearer",
+            role=role,
+            user=UserResponse(
+                user_id=str(user.id),
+                email=user.email,
+                full_name=user.full_name,
+                role=role,
+            ),
+        )
     except OperationalError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -100,6 +112,7 @@ async def get_current_user_info(
         user_id=current_user["user_id"],
         email=current_user["email"],
         full_name=current_user.get("full_name"),
+        role=current_user.get("role", "user"),
     )
 
 
