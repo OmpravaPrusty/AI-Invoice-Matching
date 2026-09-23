@@ -37,6 +37,7 @@ class DashboardMetrics(BaseModel):
 
 
 class RecentComparisonRun(BaseModel):
+    comparison_id: str
     run_id: str
     po_reference: str
     invoice_reference: str
@@ -157,10 +158,11 @@ async def get_dashboard_overview(
         recent_query = recent_query.filter(Comparison.status == STATUS_FILTERS[status])
 
     recent_runs = []
-    for record in recent_query.limit(10).all():
+    for record in recent_query.all():
         po = db.query(PurchaseOrder).filter(PurchaseOrder.id == record.purchase_order_id).first()
         invoice = db.query(Invoice).filter(Invoice.id == record.invoice_id).first()
         recent_runs.append(RecentComparisonRun(
+            comparison_id=str(record.id),
             run_id=f"RUN-{record.created_at:%Y%m%d}-{record.run_number:03d}",
             po_reference=(po.po_number if po and po.po_number else po.file_name if po else "Not detected"),
             invoice_reference=(invoice.invoice_number if invoice and invoice.invoice_number else invoice.file_name if invoice else "Not detected"),

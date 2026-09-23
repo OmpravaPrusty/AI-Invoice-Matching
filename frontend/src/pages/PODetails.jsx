@@ -23,7 +23,7 @@ const initialOverview = {
   vendor: "Acme Supply Corp",
   issueDate: "Aug 28, 2026",
   paymentTerms: "Net 30",
-  currency: "USD",
+  currency: "INR",
 };
 
 const initialItems = [
@@ -53,9 +53,9 @@ const initialItems = [
   },
 ];
 
-const currency = new Intl.NumberFormat("en-US", {
+const currency = new Intl.NumberFormat("en-IN", {
   style: "currency",
-  currency: "USD",
+  currency: "INR",
 });
 
 function formatMoney(value) {

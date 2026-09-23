@@ -213,7 +213,10 @@ export default function MainLayout({
                     ? breadcrumbs
                     : breadcrumbs.split("> ").map((label) => ({ label }))
                   ).map((crumb, idx, arr) => (
-                    <li key={idx} className="flex items-center gap-2">
+                    <li
+                      key={`breadcrumb-${crumb.label}-${idx}`}
+                      className="flex items-center gap-2"
+                    >
                       {crumb.to ? (
                         <Link
                           to={crumb.to}

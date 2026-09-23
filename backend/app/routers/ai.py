@@ -10,7 +10,9 @@ from app.database import get_db
 from app.models.invoice import Invoice
 from app.models.purchase_order import PurchaseOrder
 from app.services.gemini_service import GeminiService
-from services.matching_service import compare_document_bytes
+from app.services.ai_service import generate_discrepancy_resolution
+from app.routers.comparisons import _rule_based_discrepancies
+from services.matching_service import compare_document_bytes, filter_similarity_matrix
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
@@ -44,13 +46,26 @@ async def compare_direct(
     po_bytes = await _read_direct_file(po_file)
     invoice_bytes = await _read_direct_file(invoice_file)
     try:
-        return await asyncio.to_thread(
+        result = await asyncio.to_thread(
             compare_document_bytes,
             po_bytes,
             invoice_bytes,
             po_file.content_type or "application/pdf",
             invoice_file.content_type or "application/pdf",
         )
+        po_data = result.get("po_extracted") or {}
+        invoice_data = result.get("invoice_extracted") or {}
+        rows = result.get("discrepancies") or result.get("line_items") or []
+        rows = _rule_based_discrepancies(po_data, invoice_data, rows)
+        result["discrepancies"] = rows
+        result["similarity_matrix"] = filter_similarity_matrix(
+            result.get("line_items") or rows,
+            result.get("matched_headers") or [],
+        )
+        result["ai_recommendation"] = await asyncio.to_thread(
+            generate_discrepancy_resolution, po_data, invoice_data, rows
+        ) if rows else "No discrepancies were detected. AP can proceed with the normal approval workflow."
+        return result
     except HTTPException:
         raise
     except Exception as exc:

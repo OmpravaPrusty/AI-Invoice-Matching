@@ -44,6 +44,7 @@ const emptyResult = {
   invoiceTotal: "",
   discrepancyMatrix: [],
   matchedHeaders: [],
+  aiRecommendation: "",
 };
 
 function Stepper({ currentStep }) {
@@ -270,8 +271,23 @@ function normalizeComparison(comparison) {
     vendorName: comparison.vendorName || summary.vendor_name || "",
     poTotal: comparison.poTotal ?? summary.po_total ?? "",
     invoiceTotal: comparison.invoiceTotal ?? summary.invoice_total ?? "",
+    aiRecommendation: comparison.ai_recommendation || "",
     lineItems,
     matchedHeaders,
+    similarityMatrix: Array.isArray(comparison.similarity_matrix)
+      ? comparison.similarity_matrix.map((row) => ({
+          ...row,
+          itemName:
+            row.item_name || row.itemName || row.name || "Unknown item",
+          poQty: row.po_qty ?? row.poQty ?? "",
+          invoiceQty: row.inv_qty ?? row.invoiceQty ?? "",
+          poRate: row.po_rate ?? row.poRate ?? "",
+          invoiceRate: row.inv_rate ?? row.invoiceRate ?? "",
+          poTotal: row.po_total ?? row.poTotal ?? "",
+          invoiceTotal: row.inv_total ?? row.invoiceTotal ?? "",
+          status: "MATCH",
+        }))
+      : lineItems.filter((row) => row.status === "MATCH"),
   };
 }
 
@@ -301,6 +317,18 @@ export default function ComparisonWizard() {
         match_status: normalized.matchStatus,
         summary: normalized.summaryText,
         discrepancies: normalized.lineItems,
+        po_extracted: {
+          ...(comparison.po_extracted || {}),
+          po_number: normalized.poNumber,
+          vendor: normalized.vendorName,
+          total_amount: normalized.poTotal,
+        },
+        invoice_extracted: {
+          ...(comparison.invoice_extracted || {}),
+          invoice_number: normalized.invoiceNumber,
+          vendor: normalized.vendorName,
+          total_amount: normalized.invoiceTotal,
+        },
       });
       setIsSimilarityOpen(false);
       setResult({
@@ -312,7 +340,9 @@ export default function ComparisonWizard() {
         vendorName: normalized.vendorName,
         poTotal: normalized.poTotal,
         invoiceTotal: normalized.invoiceTotal,
+        aiRecommendation: normalized.aiRecommendation,
         discrepancyMatrix: normalized.lineItems,
+        similarityMatrix: normalized.similarityMatrix,
         matchedHeaders: normalized.matchedHeaders,
       });
       setSaved(false);
@@ -530,6 +560,22 @@ export default function ComparisonWizard() {
             </div>
           </div>
         </div>
+        {isMismatchedCase && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+            <div className="flex items-start gap-3">
+              <Sparkles className="mt-0.5 shrink-0 text-amber-600" size={21} />
+              <div>
+                <h2 className="font-semibold text-slate-900">
+                  AP Resolution Recommendation
+                </h2>
+                <p className="mt-2 whitespace-pre-line text-sm leading-6 text-slate-700">
+                  {result.aiRecommendation ||
+                    "Review the discrepancy matrix and confirm the variance with the vendor before approval."}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {isMismatchedCase && (
           <div className="rounded-xl border border-rose-200 bg-rose-50/50 p-5">
             <div className="mb-4 flex items-center gap-2 text-lg font-semibold text-rose-700">

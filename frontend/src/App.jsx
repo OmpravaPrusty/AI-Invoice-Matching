@@ -4,6 +4,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import PurchaseOrders from "./pages/PurchaseOrders";
+import Invoices from "./pages/Invoices";
 import UploadPO from "./pages/UploadPO";
 import PODetails from "./pages/PODetails";
 import ComparisonWizard from "./pages/ComparisonWizard";
@@ -64,6 +65,16 @@ function App() {
           <ProtectedRoute>
             <AdminRoute>
               <PurchaseOrders />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/invoices"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <Invoices />
             </AdminRoute>
           </ProtectedRoute>
         }

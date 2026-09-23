@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import json
 import hashlib
+import math
 from pathlib import Path
 from typing import Any
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
+from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 
 from app.core.security import get_current_user
@@ -15,6 +17,7 @@ from app.database import get_db
 from app.models.comparison import Comparison, ComparisonStatus
 from app.models.invoice import Invoice
 from app.models.purchase_order import PurchaseOrder
+from app.services.ai_service import generate_discrepancy_resolution
 
 router = APIRouter(prefix="/api/comparisons", tags=["comparisons"])
 SAVED_DOCUMENTS = Path(__file__).resolve().parents[2] / "saved_docs"
@@ -26,10 +29,81 @@ class ComparisonRequest(BaseModel):
     invoice_id: str
 
 
+def _number(value: Any) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def _first_number(data: dict[str, Any], *keys: str) -> float | None:
+    for key in keys:
+        number = _number(data.get(key))
+        if number is not None:
+            return number
+    return None
+
+
+def _rule_based_discrepancies(
+    po_data: dict[str, Any], invoice_data: dict[str, Any], rows: list[Any]
+) -> list[dict[str, Any]]:
+    """Enrich existing line items with deterministic variances."""
+    detected = [dict(row) for row in rows if isinstance(row, dict)]
+
+    po_total = _first_number(po_data, "total_amount", "total", "po_total")
+    invoice_total = _first_number(invoice_data, "total_amount", "total", "invoice_total")
+    if po_total is not None and invoice_total is not None and not math.isclose(po_total, invoice_total, abs_tol=0.01):
+        if not any(row.get("field") == "Document total" for row in detected):
+            detected.append({
+                "field": "Document total",
+                "po_value": po_total,
+                "invoice_value": invoice_total,
+                "variance": round(invoice_total - po_total, 2),
+                "severity": "HIGH",
+                "status": "DISCREPANCY",
+                "recommendation": "Verify tax, shipping, credits, and invoice line extensions before approval.",
+            })
+
+    for index, row in enumerate(rows):
+        if not isinstance(row, dict):
+            continue
+        label = row.get("item_name") or row.get("field") or f"Line item {index + 1}"
+        checks = (
+            ("quantity", ("po_qty", "po_quantity"), ("inv_qty", "invoice_qty")),
+            ("unit price", ("po_rate", "po_unit_price"), ("inv_rate", "invoice_rate")),
+        )
+        for name, po_keys, invoice_keys in checks:
+            po_value = _first_number(row, *po_keys)
+            invoice_value = _first_number(row, *invoice_keys)
+            if po_value is not None and invoice_value is not None and not math.isclose(po_value, invoice_value, abs_tol=0.01):
+                row["status"] = "DISCREPANCY"
+                reason = f"Confirm the invoiced {name} against the approved purchase order."
+                existing_reason = str(row.get("variance_reason") or row.get("recommendation") or "")
+                row["variance_reason"] = "; ".join(
+                    part for part in (existing_reason, reason) if part and reason not in part
+                )
+    return detected
+
+
+def _save_optional_resolution(db: Session, result: Comparison, recommendation: str) -> None:
+    """Use a dedicated column when an older/newer deployment has added it."""
+    bind = db.get_bind()
+    if bind is None:
+        return
+    columns = {column["name"] for column in inspect(bind).get_columns("comparisons")}
+    if "resolution_suggestion" in columns:
+        db.execute(
+            text("UPDATE comparisons SET resolution_suggestion = :recommendation WHERE id = :id"),
+            {"recommendation": recommendation, "id": result.id},
+        )
+
+
 def _record_response(record: Comparison, db: Session) -> dict[str, Any]:
     po = db.query(PurchaseOrder).filter(PurchaseOrder.id == record.purchase_order_id).first()
     invoice = db.query(Invoice).filter(Invoice.id == record.invoice_id).first()
     details = json.loads(record.discrepancy_details) if record.discrepancy_details else {}
+    ai_recommendation = getattr(record, "resolution_suggestion", None) or details.get("ai_recommendation", "")
     return {
         "comparison_id": str(record.id), "run_number": record.run_number,
         "match_status": record.status.value if hasattr(record.status, "value") else record.status,
@@ -37,6 +111,7 @@ def _record_response(record: Comparison, db: Session) -> dict[str, Any]:
         "discrepancies": details.get("discrepancies", []),
         "po_extracted": po.extracted_data if po and po.extracted_data else {},
         "invoice_extracted": invoice.extracted_data if invoice and invoice.extracted_data else {},
+        "ai_recommendation": ai_recommendation,
         "created_at": record.created_at,
     }
 
@@ -123,6 +198,12 @@ async def save_comparison(
             rows = payload.get("line_items", [])
         if not isinstance(rows, list):
             rows = []
+        rows = _rule_based_discrepancies(po_extracted, invoice_extracted, rows)
+        ai_recommendation = str(payload.get("ai_recommendation") or "")
+        if not ai_recommendation and rows:
+            ai_recommendation = generate_discrepancy_resolution(po_extracted, invoice_extracted, rows)
+        payload["discrepancies"] = rows
+        payload["ai_recommendation"] = ai_recommendation
         summary_text = payload.get("summary") if isinstance(payload.get("summary"), str) else summary.get("overall_status", "")
         result = Comparison(
             user_id=user_id,
@@ -137,6 +218,7 @@ async def save_comparison(
         )
         db.add(result)
         db.flush()
+        _save_optional_resolution(db, result, ai_recommendation)
         db.commit()
         db.refresh(result)
         return {"comparison_id": str(result.id), "po_id": str(po.id), "invoice_id": str(invoice.id), "run_number": result.run_number, "status": result.status.value}
@@ -178,6 +260,29 @@ async def get_comparison(comparison_id: str, current_user: dict[str, Any] = Depe
     if record is None:
         raise HTTPException(status_code=404, detail="Comparison not found.")
     return _record_response(record, db)
+
+
+@router.delete("/{comparison_id}", status_code=204)
+async def delete_comparison(
+    comparison_id: str,
+    current_user: dict[str, Any] = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    try:
+        record_id = UUID(comparison_id)
+        user_id = UUID(str(current_user["user_id"]))
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid comparison identifier.") from exc
+
+    record = db.query(Comparison).filter(
+        Comparison.id == record_id,
+        Comparison.user_id == user_id,
+    ).first()
+    if record is None:
+        raise HTTPException(status_code=404, detail="Comparison not found.")
+
+    db.delete(record)
+    db.commit()
 
 
 @router.get("")

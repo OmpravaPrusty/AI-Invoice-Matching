@@ -1,16 +1,19 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
   Upload,
   Plus,
   Eye,
-  Trash2,
+  FileText,
   ChevronLeft,
   ChevronRight,
   X,
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
+import api from "../services/api.ts";
+import DocumentPreviewModal from "../components/ui/DocumentPreviewModal";
+import DocumentDetailsModal from "../components/ui/DocumentDetailsModal";
 
 /**
  * PurchaseOrders - Enterprise purchase orders repository page
@@ -27,119 +30,59 @@ import MainLayout from "../components/layout/MainLayout";
 export default function PurchaseOrders() {
   const navigate = useNavigate();
 
-  // Mock data - Realistic enterprise PO records
-  const mockPOs = [
-    {
-      id: "PO-2026-8812",
-      vendorName: "Acme Supply Corp",
-      amount: 45200.0,
-      dateIssued: "2026-08-28",
-      lineItems: 12,
-      status: "processed",
-    },
-    {
-      id: "PO-2026-8811",
-      vendorName: "Global Logistics Ltd",
-      amount: 12850.5,
-      dateIssued: "2026-08-27",
-      lineItems: 5,
-      status: "pending",
-    },
-    {
-      id: "PO-2026-8810",
-      vendorName: "Nexus Systems Inc",
-      amount: 108000.0,
-      dateIssued: "2026-08-26",
-      lineItems: 28,
-      status: "processed",
-    },
-    {
-      id: "PO-2026-8809",
-      vendorName: "TechVendor Solutions",
-      amount: 67500.75,
-      dateIssued: "2026-08-25",
-      lineItems: 18,
-      status: "pending",
-    },
-    {
-      id: "PO-2026-8808",
-      vendorName: "Premier Consulting Group",
-      amount: 23400.0,
-      dateIssued: "2026-08-24",
-      lineItems: 8,
-      status: "draft",
-    },
-    {
-      id: "PO-2026-8807",
-      vendorName: "Enterprise IT Solutions",
-      amount: 156750.25,
-      dateIssued: "2026-08-23",
-      lineItems: 42,
-      status: "processed",
-    },
-    {
-      id: "PO-2026-8806",
-      vendorName: "Global Logistics Ltd",
-      amount: 9200.0,
-      dateIssued: "2026-08-22",
-      lineItems: 3,
-      status: "draft",
-    },
-    {
-      id: "PO-2026-8805",
-      vendorName: "Acme Supply Corp",
-      amount: 34567.89,
-      dateIssued: "2026-08-21",
-      lineItems: 15,
-      status: "pending",
-    },
-    {
-      id: "PO-2026-8804",
-      vendorName: "Digital Services Partners",
-      amount: 78900.0,
-      dateIssued: "2026-08-20",
-      lineItems: 22,
-      status: "processed",
-    },
-    {
-      id: "PO-2026-8803",
-      vendorName: "Supply Chain Experts",
-      amount: 45000.0,
-      dateIssued: "2026-08-19",
-      lineItems: 11,
-      status: "pending",
-    },
-  ];
-
   // State management
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
   const [vendorFilter, setVendorFilter] = useState("all");
-  const [selectedPos, setSelectedPos] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [storedPOs, setStoredPOs] = useState([]);
+  const [selectedDocForPreview, setSelectedDocForPreview] = useState(null);
+  const [selectedDocForDetails, setSelectedDocForDetails] = useState(null);
+  const [loadError, setLoadError] = useState("");
   const itemsPerPage = 10;
+
+  useEffect(() => {
+    api
+      .get("/api/purchase-orders")
+      .then(({ data }) => {
+        setStoredPOs(
+          (data.purchase_orders || []).map((item) => ({
+            ...item,
+            poId: item.id,
+            vendorName: item.vendor || "Not detected",
+            amount: item.total_amount || 0,
+            dateIssued: item.created_at,
+            lineItems:
+              item.extracted_data?.line_items?.length ||
+              item.extracted_data?.items?.length ||
+              0,
+          })),
+        );
+      })
+      .catch((error) =>
+        setLoadError(
+          error.response?.data?.detail || "Could not load purchase orders.",
+        ),
+      );
+  }, []);
 
   // Get unique vendors for dropdown
   const uniqueVendors = useMemo(() => {
-    return [...new Set(mockPOs.map((po) => po.vendorName))].sort();
-  }, []);
+    return [...new Set(storedPOs.map((po) => po.vendorName))].sort();
+  }, [storedPOs]);
 
   // Filter logic
   const filteredPOs = useMemo(() => {
-    return mockPOs.filter((po) => {
+    return storedPOs.filter((po) => {
       const matchesSearch =
-        po.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (po.po_number || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         po.vendorName.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesStatus =
-        statusFilter === "all" || po.status === statusFilter;
 
       const matchesVendor =
         vendorFilter === "all" || po.vendorName === vendorFilter;
 
-      return matchesSearch && matchesStatus && matchesVendor;
+      return matchesSearch && matchesVendor;
     });
-  }, [searchTerm, statusFilter, vendorFilter]);
+  }, [searchTerm, vendorFilter, storedPOs]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredPOs.length / itemsPerPage);
@@ -147,67 +90,12 @@ export default function PurchaseOrders() {
   const paginatedPOs = filteredPOs.slice(startIdx, startIdx + itemsPerPage);
 
   /**
-   * Toggle individual PO selection
-   */
-  const togglePoSelection = (poId) => {
-    setSelectedPos((prev) =>
-      prev.includes(poId) ? prev.filter((id) => id !== poId) : [...prev, poId],
-    );
-  };
-
-  /**
-   * Toggle select all for current page
-   */
-  const toggleSelectAll = () => {
-    const currentPageIds = paginatedPOs.map((po) => po.id);
-    const allSelected = currentPageIds.every((id) => selectedPos.includes(id));
-
-    if (allSelected) {
-      setSelectedPos((prev) =>
-        prev.filter((id) => !currentPageIds.includes(id)),
-      );
-    } else {
-      setSelectedPos((prev) => [...new Set([...prev, ...currentPageIds])]);
-    }
-  };
-
-  /**
-   * Get status badge styling
-   */
-  const getStatusBadge = (status) => {
-    const badges = {
-      processed: {
-        bg: "bg-emerald-50",
-        text: "text-emerald-700",
-        border: "border-emerald-200",
-        label: "Processed",
-        dot: "bg-emerald-500",
-      },
-      pending: {
-        bg: "bg-amber-50",
-        text: "text-amber-700",
-        border: "border-amber-200",
-        label: "Pending",
-        dot: "bg-amber-500",
-      },
-      draft: {
-        bg: "bg-slate-50",
-        text: "text-slate-700",
-        border: "border-slate-200",
-        label: "Draft",
-        dot: "bg-slate-500",
-      },
-    };
-    return badges[status] || badges.draft;
-  };
-
-  /**
    * Format currency
    */
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-IN", {
       style: "currency",
-      currency: "USD",
+      currency: "INR",
       minimumFractionDigits: 2,
     }).format(amount);
   };
@@ -228,20 +116,20 @@ export default function PurchaseOrders() {
    */
   const pageActions = (
     <div className="flex gap-3">
-      <button
+      {/* <button
         onClick={() => navigate("/purchase-orders/upload")}
         className="px-4 py-2 bg-slate-200 text-slate-900 rounded-lg font-medium hover:bg-slate-300 transition-colors inline-flex items-center gap-2"
       >
         <Upload size={18} />
         Batch Import
-      </button>
-      <button
+      </button> */}
+      {/* <button
         onClick={() => navigate("/purchase-orders/upload")}
         className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
       >
         <Plus size={18} />
         New PO
-      </button>
+      </button> */}
     </div>
   );
 
@@ -256,12 +144,12 @@ export default function PurchaseOrders() {
         <div className="p-6 border-b border-slate-200">
           <div className="flex flex-col lg:flex-row gap-4 lg:items-end">
             {/* Search Input */}
-            <div className="flex-1 min-w-0">
+            <div className="relative max-w-xl flex-1">
               <label
                 htmlFor="search-po"
                 className="block text-sm font-medium text-slate-700 mb-2"
               >
-                Search POs
+                {/* Search POs */}
               </label>
               <div className="relative">
                 <Search
@@ -280,30 +168,6 @@ export default function PurchaseOrders() {
                   className="input-base pl-10 w-full"
                 />
               </div>
-            </div>
-
-            {/* Status Dropdown */}
-            <div className="lg:flex-shrink-0">
-              <label
-                htmlFor="status-filter"
-                className="block text-sm font-medium text-slate-700 mb-2"
-              >
-                Status
-              </label>
-              <select
-                id="status-filter"
-                value={statusFilter}
-                onChange={(e) => {
-                  setStatusFilter(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="input-base"
-              >
-                <option value="all">All Statuses</option>
-                <option value="processed">Processed</option>
-                <option value="pending">Pending</option>
-                <option value="draft">Draft</option>
-              </select>
             </div>
 
             {/* Vendor Dropdown */}
@@ -334,7 +198,7 @@ export default function PurchaseOrders() {
           </div>
 
           {/* Active Filters Display */}
-          {(searchTerm || statusFilter !== "all" || vendorFilter !== "all") && (
+          {(searchTerm || vendorFilter !== "all") && (
             <div className="mt-4 flex flex-wrap gap-2 items-center">
               <span className="text-sm font-medium text-slate-600">
                 Active Filters:
@@ -344,17 +208,6 @@ export default function PurchaseOrders() {
                   Search: "{searchTerm}"
                   <button
                     onClick={() => setSearchTerm("")}
-                    className="hover:opacity-70 transition-opacity"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-              {statusFilter !== "all" && (
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                  Status: {statusFilter}
-                  <button
-                    onClick={() => setStatusFilter("all")}
                     className="hover:opacity-70 transition-opacity"
                   >
                     <X size={14} />
@@ -375,7 +228,6 @@ export default function PurchaseOrders() {
               <button
                 onClick={() => {
                   setSearchTerm("");
-                  setStatusFilter("all");
                   setVendorFilter("all");
                   setCurrentPage(1);
                 }}
@@ -388,6 +240,11 @@ export default function PurchaseOrders() {
         </div>
 
         {/* Results Counter */}
+        {loadError && (
+          <div className="border-b border-rose-200 bg-rose-50 px-6 py-3 text-sm text-rose-700">
+            {loadError}
+          </div>
+        )}
         <div className="px-6 py-3 border-b border-slate-200 text-sm text-slate-600">
           Showing{" "}
           <span className="font-semibold">
@@ -402,17 +259,6 @@ export default function PurchaseOrders() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-6 py-3 text-left">
-                  <input
-                    type="checkbox"
-                    checked={
-                      paginatedPOs.length > 0 &&
-                      paginatedPOs.every((po) => selectedPos.includes(po.id))
-                    }
-                    onChange={toggleSelectAll}
-                    className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                  />
-                </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">
                   PO Number
                 </th>
@@ -429,9 +275,6 @@ export default function PurchaseOrders() {
                   Line Items
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wide">
                   Actions
                 </th>
               </tr>
@@ -439,26 +282,13 @@ export default function PurchaseOrders() {
             <tbody>
               {paginatedPOs.length > 0 ? (
                 paginatedPOs.map((po) => {
-                  const badge = getStatusBadge(po.status);
-                  const isSelected = selectedPos.includes(po.id);
-
                   return (
                     <tr
-                      key={po.id}
-                      className={`border-b border-slate-200 hover:bg-slate-50 transition-colors ${
-                        isSelected ? "bg-blue-50" : ""
-                      }`}
+                      key={po.poId}
+                      className="border-b border-slate-200 hover:bg-slate-50 transition-colors"
                     >
-                      <td className="px-6 py-4">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => togglePoSelection(po.id)}
-                          className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                        />
-                      </td>
                       <td className="px-6 py-4 text-sm font-mono font-semibold text-slate-900">
-                        {po.id}
+                        {po.po_number || "N/A"}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-700 font-medium">
                         {po.vendorName}
@@ -475,37 +305,27 @@ export default function PurchaseOrders() {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span
-                          className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium border ${badge.bg} ${badge.text} ${badge.border}`}
-                        >
-                          <span
-                            className={`w-2 h-2 rounded-full ${badge.dot}`}
-                          />
-                          {badge.label}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() =>
-                              navigate(`/purchase-orders/${po.id}`)
+                            type="button"
+                            onClick={() => setSelectedDocForPreview(po)}
+                            disabled={!po.file_url}
+                            className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="View PDF"
+                            title={
+                              po.file_url ? "View PDF" : "PDF URL unavailable"
                             }
-                            className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            aria-label="View details"
                           >
-                            <Eye size={18} />
+                            <FileText size={18} />
                           </button>
                           <button
-                            onClick={() => {
-                              if (window.confirm(`Delete ${po.id}?`)) {
-                                // Handle delete
-                                console.log(`Deleted ${po.id}`);
-                              }
-                            }}
-                            className="p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            aria-label="Delete PO"
+                            type="button"
+                            onClick={() => setSelectedDocForDetails(po)}
+                            className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            aria-label="View details"
+                            title="View details"
                           >
-                            <Trash2 size={18} />
+                            <Eye size={18} />
                           </button>
                         </div>
                       </td>
@@ -514,7 +334,7 @@ export default function PurchaseOrders() {
                 })
               ) : (
                 <tr>
-                  <td colSpan="8" className="px-6 py-8 text-center">
+                  <td colSpan="6" className="px-6 py-8 text-center">
                     <p className="text-slate-600">No purchase orders found.</p>
                     <p className="text-sm text-slate-400 mt-1">
                       Try adjusting your search or filter criteria.
@@ -525,22 +345,6 @@ export default function PurchaseOrders() {
             </tbody>
           </table>
         </div>
-
-        {/* Selection Summary */}
-        {selectedPos.length > 0 && (
-          <div className="px-6 py-3 bg-blue-50 border-t border-slate-200 flex items-center justify-between">
-            <div className="text-sm font-semibold text-blue-900">
-              {selectedPos.length} item{selectedPos.length !== 1 ? "s" : ""}{" "}
-              selected
-            </div>
-            <button
-              onClick={() => setSelectedPos([])}
-              className="text-sm text-blue-600 hover:text-blue-900 font-medium underline"
-            >
-              Clear selection
-            </button>
-          </div>
-        )}
 
         {/* Pagination Controls */}
         <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
@@ -571,6 +375,16 @@ export default function PurchaseOrders() {
           </div>
         </div>
       </div>
+      <DocumentPreviewModal
+        document={selectedDocForPreview}
+        onClose={() => setSelectedDocForPreview(null)}
+        type="Purchase Order"
+      />
+      <DocumentDetailsModal
+        document={selectedDocForDetails}
+        onClose={() => setSelectedDocForDetails(null)}
+        type="Purchase Order"
+      />
     </MainLayout>
   );
 }

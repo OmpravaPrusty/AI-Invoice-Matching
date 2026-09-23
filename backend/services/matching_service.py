@@ -21,6 +21,17 @@ from google.genai.errors import APIError
 DEFAULT_MODEL = "gemini-3.6-flash"
 MAX_RETRIES = 3
 FILE_POLL_INTERVAL_SECONDS = 2
+HEADER_FIELDS_TO_EXCLUDE = {
+    "po_number",
+    "vendor_name",
+    "bill_to",
+    "payment_terms",
+    "place_of_supply",
+    "invoice_number",
+    "ship_to",
+    "po_date",
+    "invoice_date",
+}
 PO_NUMBER_PATTERN = re.compile(r"\b(?:PO|P\.O\.?)[\s#:/-]*[A-Z0-9][A-Z0-9./-]*\b", re.IGNORECASE)
 COMPARISON_RESPONSE_SCHEMA: dict[str, Any] = {
     "type": "OBJECT",
@@ -55,6 +66,22 @@ def _file_state_name(file_ref: Any) -> str:
 
 def _normalise_reference(value: Any) -> str:
     return re.sub(r"[^A-Z0-9]", "", str(value or "").upper())
+
+
+def filter_similarity_matrix(
+    line_items: list[Any], matched_headers: list[Any] | None = None
+) -> list[dict[str, Any]]:
+    """Return matched line items only; document headers never belong in this matrix."""
+    similarity: list[dict[str, Any]] = []
+    for item in line_items:
+        if not isinstance(item, dict) or str(item.get("status", "")).upper() != "MATCH":
+            continue
+        field = item.get("item_name") or item.get("matched_field") or item.get("field") or ""
+        normalized_field = re.sub(r"[^a-z0-9]+", "_", str(field).strip().lower()).strip("_")
+        if normalized_field in HEADER_FIELDS_TO_EXCLUDE:
+            continue
+        similarity.append(item)
+    return similarity
 
 
 def _validate_comparison_result(result: dict[str, Any]) -> dict[str, Any]:
@@ -272,6 +299,7 @@ async def process_invoice_matching(po_path: Path, invoice_path: Path) -> Dict[st
 
 __all__ = [
     "compare_document_bytes",
+    "filter_similarity_matrix",
     "process_invoice_matching",
     "run_gemini_matching",
     "wait_for_files_active",

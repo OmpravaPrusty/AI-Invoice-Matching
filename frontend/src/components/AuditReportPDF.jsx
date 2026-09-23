@@ -1,10 +1,4 @@
-import {
-  Document,
-  Page,
-  StyleSheet,
-  Text,
-  View,
-} from "@react-pdf/renderer";
+import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 const styles = StyleSheet.create({
   page: {
@@ -131,7 +125,9 @@ function formatCurrency(value) {
 }
 
 function formatNumber(value) {
-  return value === "" || value === null || value === undefined ? "-" : String(value);
+  return value === "" || value === null || value === undefined
+    ? "-"
+    : String(value);
 }
 
 function varianceFor(item) {
@@ -147,13 +143,24 @@ function reportStatus(data) {
 export default function AuditReportPDF({ data }) {
   const status = reportStatus(data);
   const isMatched = status === "EXACT MATCH";
-  const mismatches = data.discrepancyMatrix.filter(
-    (item) => item.status === "DISCREPANCY",
+  const lineItems = (
+    Array.isArray(data.discrepancyMatrix) ? data.discrepancyMatrix : []
+  ).filter(
+    (item) =>
+      item?.itemName &&
+      (item.poQty !== "" ||
+        item.invoiceQty !== "" ||
+        item.poRate !== "" ||
+        item.invoiceRate !== "" ||
+        item.poTotal !== "" ||
+        item.invoiceTotal !== ""),
   );
-  const matches = data.discrepancyMatrix.filter(
-    (item) => item.status === "MATCH",
-  );
-  const netVariance = numberValue(data.invoiceTotal) - numberValue(data.poTotal);
+  const mismatches = lineItems.filter((item) => item.status === "DISCREPANCY");
+  const matches = (
+    Array.isArray(data.similarityMatrix) ? data.similarityMatrix : lineItems
+  ).filter((item) => item?.status === "MATCH" && item?.itemName);
+  const netVariance =
+    numberValue(data.invoiceTotal) - numberValue(data.poTotal);
   const reportId = data.reportId || "Not assigned";
   const generatedAt = data.generatedAt || "Not assigned";
 
@@ -161,7 +168,9 @@ export default function AuditReportPDF({ data }) {
     <Document title="PO vs. Invoice Reconciliation Audit Report">
       <Page size="A4" style={styles.page} wrap>
         <View style={styles.header}>
-          <Text style={styles.title}>PO vs. INVOICE RECONCILIATION AUDIT REPORT</Text>
+          <Text style={styles.title}>
+            PO vs. INVOICE RECONCILIATION AUDIT REPORT
+          </Text>
           <Text style={styles.generated}>Generated on: {generatedAt}</Text>
         </View>
 
@@ -176,17 +185,25 @@ export default function AuditReportPDF({ data }) {
           <View style={styles.summaryGrid}>
             <View style={styles.summaryColumn}>
               <Text style={styles.label}>PO Number</Text>
-              <Text style={styles.value}>{data.poNumber || "Not detected"}</Text>
+              <Text style={styles.value}>
+                {data.poNumber || "Not detected"}
+              </Text>
               <Text style={styles.label}>PO Total Amount</Text>
               <Text style={styles.value}>{formatCurrency(data.poTotal)}</Text>
               <Text style={styles.label}>Vendor Name</Text>
-              <Text style={styles.value}>{data.vendorName || "Not detected"}</Text>
+              <Text style={styles.value}>
+                {data.vendorName || "Not detected"}
+              </Text>
             </View>
             <View style={styles.summaryColumn}>
               <Text style={styles.label}>Invoice Number</Text>
-              <Text style={styles.value}>{data.invoiceNumber || "Not detected"}</Text>
+              <Text style={styles.value}>
+                {data.invoiceNumber || "Not detected"}
+              </Text>
               <Text style={styles.label}>Invoice Total Amount</Text>
-              <Text style={styles.value}>{formatCurrency(data.invoiceTotal)}</Text>
+              <Text style={styles.value}>
+                {formatCurrency(data.invoiceTotal)}
+              </Text>
               <Text style={styles.label}>Net Variance Amount</Text>
               <Text style={styles.value}>{formatCurrency(netVariance)}</Text>
             </View>
@@ -195,23 +212,30 @@ export default function AuditReportPDF({ data }) {
 
         {isMatched ? (
           <Text style={styles.successBox}>
-            All line items, header values, and totals match perfectly across Purchase Order and Invoice.
+            All line items, header values, and totals match perfectly across
+            Purchase Order and Invoice.
           </Text>
         ) : (
           <View style={styles.executiveBox}>
             <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 4 }}>
               Executive Summary
             </Text>
-            <Text>{data.summary || "Discrepancies were identified during reconciliation."}</Text>
+            <Text>
+              {data.summary ||
+                "Discrepancies were identified during reconciliation."}
+            </Text>
             <Text style={{ marginTop: 4 }}>
-              {mismatches.length} affected line item(s); net variance: {formatCurrency(netVariance)}.
+              {mismatches.length} affected line item(s); net variance:{" "}
+              {formatCurrency(netVariance)}.
             </Text>
           </View>
         )}
 
         {!isMatched && (
           <View>
-            <Text style={[styles.sectionTitle, styles.sectionTitleRed]}>Discrepancy Matrix</Text>
+            <Text style={[styles.sectionTitle, styles.sectionTitleRed]}>
+              Discrepancy Matrix
+            </Text>
             <View style={styles.table}>
               <View style={[styles.row, styles.headerRow]}>
                 <Text style={styles.item}>Item Name / Description</Text>
@@ -224,18 +248,36 @@ export default function AuditReportPDF({ data }) {
                 <Text style={styles.variance}>Variance</Text>
               </View>
               {mismatches.length === 0 ? (
-                <Text style={styles.empty}>No individual discrepancy rows were returned.</Text>
+                <Text style={styles.empty}>
+                  No individual discrepancy rows were returned.
+                </Text>
               ) : (
                 mismatches.map((item, index) => (
-                  <View key={`mismatch-${index}`} style={[styles.row, styles.mismatchRow]} wrap={false}>
+                  <View
+                    key={`mismatch-${index}`}
+                    style={[styles.row, styles.mismatchRow]}
+                    wrap={false}
+                  >
                     <Text style={styles.item}>{item.itemName}</Text>
                     <Text style={styles.qty}>{formatNumber(item.poQty)}</Text>
-                    <Text style={styles.qty}>{formatNumber(item.invoiceQty)}</Text>
-                    <Text style={styles.rate}>{formatCurrency(item.poRate)}</Text>
-                    <Text style={styles.rate}>{formatCurrency(item.invoiceRate)}</Text>
-                    <Text style={styles.total}>{formatCurrency(item.poTotal)}</Text>
-                    <Text style={styles.total}>{formatCurrency(item.invoiceTotal)}</Text>
-                    <Text style={styles.variance}>{formatCurrency(varianceFor(item))}</Text>
+                    <Text style={styles.qty}>
+                      {formatNumber(item.invoiceQty)}
+                    </Text>
+                    <Text style={styles.rate}>
+                      {formatCurrency(item.poRate)}
+                    </Text>
+                    <Text style={styles.rate}>
+                      {formatCurrency(item.invoiceRate)}
+                    </Text>
+                    <Text style={styles.total}>
+                      {formatCurrency(item.poTotal)}
+                    </Text>
+                    <Text style={styles.total}>
+                      {formatCurrency(item.invoiceTotal)}
+                    </Text>
+                    <Text style={styles.variance}>
+                      {formatCurrency(varianceFor(item))}
+                    </Text>
                   </View>
                 ))
               )}
@@ -244,7 +286,9 @@ export default function AuditReportPDF({ data }) {
         )}
 
         <View>
-          <Text style={[styles.sectionTitle, styles.sectionTitleGreen]}>Similarity Matrix</Text>
+          <Text style={[styles.sectionTitle, styles.sectionTitleGreen]}>
+            Similarity Matrix
+          </Text>
           <View style={styles.table}>
             <View style={[styles.row, styles.headerRow]}>
               <Text style={styles.headerItem}>Matched Field / Item</Text>
@@ -252,31 +296,31 @@ export default function AuditReportPDF({ data }) {
               <Text style={styles.headerValue}>Invoice Value</Text>
               <Text style={styles.confidence}>Confidence</Text>
             </View>
-            {data.matchedHeaders.map((header, index) => (
-              <View key={`header-${index}`} style={styles.row} wrap={false}>
-                <Text style={styles.headerItem}>{header.field}</Text>
-                <Text style={styles.headerValue}>{String(header.poValue)}</Text>
-                <Text style={styles.headerValue}>{String(header.invoiceValue)}</Text>
-                <Text style={styles.confidence}>{header.confidence || "MATCH"}</Text>
-              </View>
-            ))}
             {matches.map((item, index) => (
               <View key={`match-${index}`} style={styles.row} wrap={false}>
                 <Text style={styles.headerItem}>{item.itemName}</Text>
-                <Text style={styles.headerValue}>{formatNumber(item.poQty)}</Text>
-                <Text style={styles.headerValue}>{formatNumber(item.invoiceQty)}</Text>
+                <Text style={styles.headerValue}>
+                  {formatNumber(item.poQty)}
+                </Text>
+                <Text style={styles.headerValue}>
+                  {formatNumber(item.invoiceQty)}
+                </Text>
                 <Text style={styles.confidence}>VERIFIED</Text>
               </View>
             ))}
-            {data.matchedHeaders.length === 0 && matches.length === 0 && (
-              <Text style={styles.empty}>No matched headers or line items were returned.</Text>
+            {matches.length === 0 && (
+              <Text style={styles.empty}>
+                No matched line items were returned.
+              </Text>
             )}
           </View>
         </View>
 
         {isMatched && (
           <View style={styles.signoff}>
-            <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 4 }}>Audit Approval</Text>
+            <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 4 }}>
+              Audit Approval
+            </Text>
             <Text>Verification result: APPROVED - exact match confirmed.</Text>
             <Text>Generated by: AI Invoice Matching Audit System</Text>
           </View>
