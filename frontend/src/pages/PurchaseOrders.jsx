@@ -4,7 +4,6 @@ import {
   Search,
   Upload,
   Plus,
-  Eye,
   FileText,
   ChevronLeft,
   ChevronRight,
@@ -12,8 +11,9 @@ import {
 } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
 import api from "../services/api.ts";
-import DocumentPreviewModal from "../components/ui/DocumentPreviewModal";
 import DocumentDetailsModal from "../components/ui/DocumentDetailsModal";
+
+const ITEMS_PER_PAGE = 10;
 
 /**
  * PurchaseOrders - Enterprise purchase orders repository page
@@ -35,10 +35,8 @@ export default function PurchaseOrders() {
   const [vendorFilter, setVendorFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [storedPOs, setStoredPOs] = useState([]);
-  const [selectedDocForPreview, setSelectedDocForPreview] = useState(null);
   const [selectedDocForDetails, setSelectedDocForDetails] = useState(null);
   const [loadError, setLoadError] = useState("");
-  const itemsPerPage = 10;
 
   useEffect(() => {
     api
@@ -85,9 +83,9 @@ export default function PurchaseOrders() {
   }, [searchTerm, vendorFilter, storedPOs]);
 
   // Pagination logic
-  const totalPages = Math.ceil(filteredPOs.length / itemsPerPage);
-  const startIdx = (currentPage - 1) * itemsPerPage;
-  const paginatedPOs = filteredPOs.slice(startIdx, startIdx + itemsPerPage);
+  const totalPages = Math.ceil(filteredPOs.length / ITEMS_PER_PAGE);
+  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedPOs = filteredPOs.slice(startIdx, startIdx + ITEMS_PER_PAGE);
 
   /**
    * Format currency
@@ -249,7 +247,7 @@ export default function PurchaseOrders() {
           Showing{" "}
           <span className="font-semibold">
             {paginatedPOs.length === 0 ? 0 : startIdx + 1}-
-            {Math.min(startIdx + itemsPerPage, filteredPOs.length)}
+            {Math.min(startIdx + ITEMS_PER_PAGE, filteredPOs.length)}
           </span>{" "}
           of <span className="font-semibold">{filteredPOs.length}</span> POs
         </div>
@@ -308,24 +306,12 @@ export default function PurchaseOrders() {
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={() => setSelectedDocForPreview(po)}
-                            disabled={!po.file_url}
-                            className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-40"
-                            aria-label="View PDF"
-                            title={
-                              po.file_url ? "View PDF" : "PDF URL unavailable"
-                            }
-                          >
-                            <FileText size={18} />
-                          </button>
-                          <button
-                            type="button"
                             onClick={() => setSelectedDocForDetails(po)}
                             className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             aria-label="View details"
                             title="View details"
                           >
-                            <Eye size={18} />
+                            <FileText size={18} />
                           </button>
                         </div>
                       </td>
@@ -375,11 +361,6 @@ export default function PurchaseOrders() {
           </div>
         </div>
       </div>
-      <DocumentPreviewModal
-        document={selectedDocForPreview}
-        onClose={() => setSelectedDocForPreview(null)}
-        type="Purchase Order"
-      />
       <DocumentDetailsModal
         document={selectedDocForDetails}
         onClose={() => setSelectedDocForDetails(null)}

@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye, FileText, Search, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, Search, X } from "lucide-react";
 import MainLayout from "../components/layout/MainLayout";
-import DocumentPreviewModal from "../components/ui/DocumentPreviewModal";
 import DocumentDetailsModal from "../components/ui/DocumentDetailsModal";
 import api from "../services/api.ts";
+
+const ITEMS_PER_PAGE = 10;
 
 export default function Invoices() {
   const [invoices, setInvoices] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [vendorFilter, setVendorFilter] = useState("all");
-  const [selectedDocForPreview, setSelectedDocForPreview] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedDocForDetails, setSelectedDocForDetails] = useState(null);
   const [loadError, setLoadError] = useState("");
 
@@ -48,6 +49,13 @@ export default function Invoices() {
     });
   }, [invoices, searchTerm, vendorFilter]);
 
+  const totalPages = Math.ceil(filteredInvoices.length / ITEMS_PER_PAGE);
+  const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedInvoices = filteredInvoices.slice(
+    startIdx,
+    startIdx + ITEMS_PER_PAGE,
+  );
+
   return (
     <MainLayout breadcrumbs="Home > Invoices" pageTitle="Invoices Directory">
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -60,7 +68,10 @@ export default function Invoices() {
               />
               <input
                 value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
+                onChange={(event) => {
+                  setSearchTerm(event.target.value);
+                  setCurrentPage(1);
+                }}
                 placeholder="Search invoices or vendors..."
                 className="input-base w-full pl-10"
               />
@@ -75,7 +86,10 @@ export default function Invoices() {
               <select
                 id="invoice-vendor-filter"
                 value={vendorFilter}
-                onChange={(event) => setVendorFilter(event.target.value)}
+                onChange={(event) => {
+                  setVendorFilter(event.target.value);
+                  setCurrentPage(1);
+                }}
                 className="input-base"
               >
                 <option value="all">All Vendors</option>
@@ -118,6 +132,7 @@ export default function Invoices() {
                 onClick={() => {
                   setSearchTerm("");
                   setVendorFilter("all");
+                  setCurrentPage(1);
                 }}
                 className="text-sm font-medium text-slate-600 underline hover:text-slate-900"
               >
@@ -131,6 +146,15 @@ export default function Invoices() {
             {loadError}
           </div>
         )}
+        <div className="px-6 py-3 border-b border-slate-200 text-sm text-slate-600">
+          Showing{" "}
+          <span className="font-semibold">
+            {paginatedInvoices.length === 0 ? 0 : startIdx + 1}-
+            {Math.min(startIdx + ITEMS_PER_PAGE, filteredInvoices.length)}
+          </span>{" "}
+          of <span className="font-semibold">{filteredInvoices.length}</span>{" "}
+          invoices
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
@@ -145,7 +169,7 @@ export default function Invoices() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
-              {filteredInvoices.map((invoice) => (
+              {paginatedInvoices.map((invoice) => (
                 <tr key={invoice.id} className="hover:bg-slate-50">
                   <td className="px-5 py-4 font-medium text-slate-900">
                     {invoice.invoice_number || invoice.file_name}
@@ -188,22 +212,10 @@ export default function Invoices() {
                     >
                       <FileText size={18} />
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDocForPreview(invoice)}
-                      disabled={!invoice.file_url}
-                      className="rounded-lg p-2 text-slate-600 hover:bg-blue-50 hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-40"
-                      aria-label="View PDF"
-                      title={
-                        invoice.file_url ? "View PDF" : "PDF URL unavailable"
-                      }
-                    >
-                      <Eye size={18} />
-                    </button>
                   </td>
                 </tr>
               ))}
-              {filteredInvoices.length === 0 && (
+              {paginatedInvoices.length === 0 && (
                 <tr>
                   <td
                     colSpan="7"
@@ -216,12 +228,33 @@ export default function Invoices() {
             </tbody>
           </table>
         </div>
+        <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between">
+          <div className="text-sm text-slate-600">
+            Page <span className="font-semibold">{currentPage}</span> of{" "}
+            <span className="font-semibold">{totalPages || 1}</span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+            >
+              <ChevronLeft size={18} />
+              Previous
+            </button>
+            <button
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+              }
+              disabled={currentPage === totalPages || totalPages === 0}
+              className="px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+            >
+              Next
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
       </div>
-      <DocumentPreviewModal
-        document={selectedDocForPreview}
-        onClose={() => setSelectedDocForPreview(null)}
-        type="Invoice"
-      />
       <DocumentDetailsModal
         document={selectedDocForDetails}
         onClose={() => setSelectedDocForDetails(null)}

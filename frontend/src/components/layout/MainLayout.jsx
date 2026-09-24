@@ -134,16 +134,16 @@ export default function MainLayout({
           {/* Right: Notifications, Language, User Profile */}
           <div className="flex items-center gap-2 md:gap-4">
             {/* Notification Bell */}
-            <button
+            {/* <button
               className="relative p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
               aria-label="Notifications"
             >
               <Bell size={20} />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            </button> */}
 
             {/* Language Selector */}
-            <div className="relative">
+            {/* <div className="relative">
               <button
                 onClick={() => setLanguageMenuOpen(!languageMenuOpen)}
                 className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors text-sm font-medium hidden md:flex items-center gap-1"
@@ -164,7 +164,7 @@ export default function MainLayout({
                   </button>
                 </div>
               )}
-            </div>
+            </div> */}
 
             {/* User Profile Dropdown */}
             <div className="relative">
